@@ -7,7 +7,7 @@ Cada tarea es un incremento pequeño. No se inicia una tarea hasta cerrar las de
 
 Leyenda de estados: pendiente, bloqueada, en curso, hecha.
 
-Las tareas hechas de la fase 0 son documentación. No hay funcionalidad de la aplicación implementada.
+Las tareas hechas de la fase 0 son documentación. F1.1 dejó una aplicación de escritorio vacía. No hay funcionalidad de biblioteca, reproducción, importación ni descargas implementada.
 
 ## Fase 0 — Cerrar la planificación
 
@@ -63,7 +63,7 @@ Objetivo: abrir una ventana de escritorio, comprobar el puente con Rust e incorp
 
 ### F1.1 Crear el proyecto Tauri 2 y Angular
 
-- **Estado:** pendiente
+- **Estado:** hecha
 - **Depende de:** F0.4
 - **Descripción:** Generar la aplicación de escritorio con Angular, TypeScript, Tauri 2 y Rust, sin funciones de biblioteca todavía.
 - **Criterios de aceptación:**

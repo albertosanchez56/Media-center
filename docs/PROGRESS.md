@@ -5,13 +5,60 @@ Estado del documento: vivo. Se actualiza al cerrar trabajo de planificación o d
 
 ## Estado general
 
-El desarrollo de la aplicación **no ha empezado**.
+El desarrollo **ha empezado**. La tarea F1.1 está hecha: Media Center abre como aplicación de escritorio de Windows y muestra una página mínima de Angular.
 
-Hay documentación de planificación, incluida la segunda revisión, y no hay código de producción. No se han instalado dependencias, no existe proyecto Angular, Tauri ni Rust, y no hay una base de datos creada. El esquema de [DATABASE.md](DATABASE.md) sigue pendiente de aprobación. No se ha creado ninguna migración.
+No hay funcionalidad de producto. No existen biblioteca, importación, reproducción, descargas ni base de datos. No se han instalado SQLite, libmpv, yt-dlp ni FFmpeg. El esquema de [DATABASE.md](DATABASE.md) sigue pendiente de aprobación y no se ha creado ninguna migración.
 
-El [README.md](../README.md) describe el proyecto, en inglés, como planificación y desarrollo inicial. En el repositorio, el desarrollo de la aplicación todavía no tiene código.
+El [README.md](../README.md) describe el proyecto, en inglés, como planificación y desarrollo inicial.
 
-Ninguna función de biblioteca, reproducción, descarga o instalación está implementada. Documentarla no la marca como hecha.
+## F1.1 Crear el proyecto Tauri 2 y Angular
+
+Hecha el 2026-11-04.
+
+| Pieza | Versión |
+| --- | --- |
+| Node.js | 22.23.4 |
+| npm | 10.9.9 |
+| Angular CLI y framework | 22.2.5 y 22.2.x |
+| TypeScript | 6.0 |
+| Rust y Cargo | 1.99.1, toolchain `stable-x86_64-pc-windows-msvc` |
+| Tauri CLI | 2.12.4 |
+| Crate `tauri` | 2.12.5 |
+
+Configuración:
+
+- Angular es una SPA con SCSS, sin SSR ni enrutado. Compila en `dist/media-center/browser`.
+- Tauri usa el identificador `com.mellk.mediacenter`, con una ventana «Media Center» de 1280×800 redimensionable.
+- `frontendDist` apunta a `../dist/media-center/browser` y `devUrl` a `http://localhost:4200`.
+- `bundle.active` está en `false`. El formato del instalador sigue pendiente en DP-19.
+- Dependencias de Rust: solo `tauri` y `tauri-build`. No hay plugins.
+- Dependencias de npm: el núcleo de Angular necesario y `@tauri-apps/cli`. No se instalaron `@angular/router`, `@angular/forms` ni `@tauri-apps/api`.
+- La CSP de Tauri queda en `null`, como en la plantilla. Se revisará más adelante.
+
+Comandos:
+
+| Comando | Uso |
+| --- | --- |
+| `npm run start` | Servidor de desarrollo de Angular |
+| `npm run build` | Compilación de Angular |
+| `npm test` | Pruebas de Angular con Vitest |
+| `npm run tauri:dev` | Aplicación de escritorio en desarrollo |
+| `npm run tauri:build` | Ejecutable release sin instalador |
+
+Comprobaciones ejecutadas:
+
+| Comprobación | Resultado |
+| --- | --- |
+| `npm run build` | Correcta. Genera `dist/media-center/browser/index.html` |
+| `npm test -- --watch=false` | 2 de 2 pruebas superadas |
+| `cargo fmt --check` | Correcta |
+| `cargo check` | Correcta |
+| `npm run tauri:build` | Correcta. Genera `src-tauri/target/release/media-center.exe` |
+| `npm run tauri:dev` | Abre la ventana «Media Center» con la página de Angular, comprobada con una captura de pantalla |
+| `git status` | Solo archivos nuevos. `docs/`, `.cursor/`, `README.md` y `.gitignore` sin cambios. `node_modules/`, `dist/`, `.angular/` y `src-tauri/target/` ignorados |
+| `npm install` | 0 vulnerabilidades |
+
+Nota de entorno: Avast inspecciona el HTTPS de este equipo. npm funciona con `NODE_OPTIONS=--use-system-ca`, definida para el usuario. El terminal del agente de Cursor no hereda esa variable, así que en ese terminal hay que definirla en cada proceso.
 
 ## Documentación
 
@@ -19,18 +66,18 @@ Ninguna función de biblioteca, reproducción, descarga o instalación está imp
 | --- | --- | --- |
 | [PROJECT.md](PROJECT.md) | Redactado y revisado | Visión, alcance y vocabulario de archivo, ficha y lote |
 | [REQUIREMENTS.md](REQUIREMENTS.md) | Redactado y revisado | Confirmado, previsto, pendiente y futuro |
-| [ARCHITECTURE.md](ARCHITECTURE.md) | Redactado y revisado | Procedimiento seguro, recuperación y lotes |
-| [DATABASE.md](DATABASE.md) | Propuesta sin aprobar | Separación de archivo y ficha incluida. No crear tablas a partir de él |
-| [ROADMAP.md](ROADMAP.md) | Redactado y revisado | Fases 0 a 12. La integración de libmpv queda al comienzo del desarrollo |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | Redactado y revisado | Estructura del repositorio actualizada con F1.1 |
+| [DATABASE.md](DATABASE.md) | Propuesta sin aprobar | No crear tablas a partir de él |
+| [ROADMAP.md](ROADMAP.md) | Redactado y revisado | F1.1 marcada como hecha |
 | [DECISIONS.md](DECISIONS.md) | Redactado y revisado | Confirmadas y pendientes |
-| [PROGRESS.md](PROGRESS.md) | Redactado y revisado | Este documento |
+| [PROGRESS.md](PROGRESS.md) | Actualizado | Este documento |
 
 ## Fases
 
 | Fase | Tema | Estado |
 | --- | --- | --- |
 | 0 | Cerrar la planificación | F0.1, F0.3 y F0.4 hechas como documentación. F0.2 pendiente: el esquema no está aprobado |
-| 1 | Esqueleto e integración inicial de libmpv | No iniciada |
+| 1 | Esqueleto e integración inicial de libmpv | En curso. F1.1 hecha. F1.2 a F1.5 pendientes |
 | 2 | Persistencia | No iniciada. Bloqueada por la aprobación del esquema y por la ruta de los datos |
 | 3 | Importación | No iniciada. La segunda ficha por archivo sigue bloqueada |
 | 4 | Consulta de la biblioteca | No iniciada |
@@ -43,7 +90,7 @@ Ninguna función de biblioteca, reproducción, descarga o instalación está imp
 | 11 | Etiquetas opcionales y cierre funcional | No iniciada |
 | 12 | Distribución para Windows | No iniciada |
 
-El detalle de cada tarea está en [ROADMAP.md](ROADMAP.md). Ninguna tarea de implementación está en curso.
+El detalle de cada tarea está en [ROADMAP.md](ROADMAP.md). Ninguna tarea está en curso en este momento.
 
 ## Decisiones que siguen pendientes
 
@@ -52,7 +99,7 @@ El detalle de cada tarea está en [ROADMAP.md](ROADMAP.md). Ninguna tarea de imp
 | [DP-17](DECISIONS.md) Aprobar el esquema | Crear la migración inicial |
 | [DP-09](DECISIONS.md) Rutas de datos | Crear la base, la carpeta administrada y la guía de instalación |
 | [DP-10](DECISIONS.md) Herramienta de etiquetas | Extraer portadas y rellenar fichas al importar |
-| [DP-01](DECISIONS.md) Integración concreta de libmpv | Funciones avanzadas del reproductor. Se cierra en F1.5, al comienzo del desarrollo, y hoy sigue abierta |
+| [DP-01](DECISIONS.md) Integración concreta de libmpv | Funciones avanzadas del reproductor. Se cierra en F1.5 |
 | [DP-04](DECISIONS.md) Referencias externas | Ofrecer un modo distinto de copiar y mover |
 | [DP-05](DECISIONS.md) Identidad de un archivo renombrado | Reconciliar rutas automáticamente |
 | [DP-06](DECISIONS.md) Duplicados de descarga | Avisar de una descarga repetida |
@@ -69,21 +116,16 @@ El detalle de cada tarea está en [ROADMAP.md](ROADMAP.md). Ninguna tarea de imp
 | [DP-19](DECISIONS.md) Formato del instalador | Generar el paquete de Windows |
 | [DP-20](DECISIONS.md) Empaquetado de herramientas externas | Decidir si viajan dentro del instalador |
 
-Decisiones ya cerradas que esta revisión incorpora: extracción de portadas (DC-12), datos propios de cada ficha (DC-13), copia y movimiento seguros (DC-14), momento de la integración de libmpv (DC-15) y evolución de categorías y colecciones por tablas nuevas (DC-16). El motor previsto sigue siendo libmpv y la opción concreta no está elegida.
-
-## Comprobaciones
-
-No hay pruebas automatizadas ni aplicación que ejecutar. En esta actualización se ha revisado la coherencia entre los siete documentos. No se ha comprobado ningún comportamiento de producto.
+Decisiones ya cerradas: extracción de portadas (DC-12), datos propios de cada ficha (DC-13), copia y movimiento seguros (DC-14), momento de la integración de libmpv (DC-15) y evolución de categorías y colecciones por tablas nuevas (DC-16).
 
 ## Siguiente paso
 
-La segunda revisión de la documentación está aplicada. El trabajo se detiene aquí, antes de la fase 1.
-
-Cuando se autorice el desarrollo, el siguiente trabajo sería el esqueleto de la aplicación y la integración inicial de libmpv dentro de esa misma ventana. La migración de SQLite espera a que el esquema se apruebe. No forma parte de este cierre.
+F1.1 está cerrada. El trabajo se detiene antes de F1.2, la comprobación del puente entre la interfaz y Rust, a la espera de autorización.
 
 ## Historial
 
 | Fecha | Qué cambió |
 | --- | --- |
-| 2026-11-04 | Se creó la documentación inicial de planificación. El desarrollo de la aplicación permanece no iniciado. |
-| 2026-11-04 | Segunda revisión aplicada en los siete documentos: archivo físico separado de la ficha, apariciones repetidas, lotes de descarga, movimiento seguro con recuperación, extracción de portadas confirmada, migraciones futuras de categorías y colecciones, integración temprana de libmpv y fase 12 de distribución. El esquema sigue sin aprobar y ninguna función está implementada. |
+| 2026-11-04 | Se creó la documentación inicial de planificación. |
+| 2026-11-04 | Segunda revisión aplicada en los siete documentos. El esquema sigue sin aprobar. |
+| 2026-11-04 | F1.1 hecha: Angular 22.2.5 y Tauri 2 inicializados en la raíz. La aplicación abre una ventana de escritorio en Windows con la página de Angular. Sin funcionalidad de producto. |

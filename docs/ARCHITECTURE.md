@@ -38,15 +38,16 @@ La separación sigue el criterio del proyecto: interfaz, lógica de negocio y ac
 
 ## Distribución prevista del repositorio
 
-Cuando se genere el proyecto, la distribución habitual de Tauri encaja con esta arquitectura:
+La tarea F1.1 creó esta distribución en la raíz del repositorio:
 
 ```
 src/            Interfaz Angular
+public/         Archivos estáticos de Angular
 src-tauri/      Aplicación Rust y configuración de Tauri
 docs/           Documentación de producto
 ```
 
-Esa estructura todavía no existe. Crearla forma parte del desarrollo, no de esta planificación. No se crea un segundo proyecto para probar libmpv: la integración se estudia en esta misma aplicación.
+Angular compila en `dist/media-center/browser`. Tauri carga esa misma ruta (`frontendDist`) en la versión compilada, y `http://localhost:4200` (`devUrl`) durante el desarrollo. No se crea un segundo proyecto para probar libmpv: la integración se estudia en esta misma aplicación.
 
 Las carpetas `library/`, `downloads/` y `data/` de la raíz están ignoradas por Git para no versionar material local. Su existencia en `.gitignore` no decide todavía dónde guardará los datos la aplicación instalada.
 
