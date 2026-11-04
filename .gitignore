@@ -1,0 +1,41 @@
+# Node.js / Angular
+node_modules/
+dist/
+.angular/
+coverage/
+
+# Rust / Tauri
+target/
+src-tauri/target/
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+npm-debug.log*
+
+# Local databases
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+
+# User multimedia and local data
+/library/
+/downloads/
+/data/
+
+# Temporary files
+*.tmp
+*.temp
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
