@@ -1,11 +1,11 @@
 # Media Center — Progreso
 
 Estado del documento: vivo. Se actualiza al cerrar trabajo de planificación o de desarrollo.  
-Última actualización: 2026-11-04.
+Última actualización: 2026-11-05.
 
 ## Estado general
 
-El desarrollo **ha empezado**. La tarea F1.1 está hecha: Media Center abre como aplicación de escritorio de Windows y muestra una página mínima de Angular.
+El desarrollo **ha empezado**. Las tareas F1.1 y F1.2 están hechas: Media Center abre como aplicación de escritorio de Windows, muestra una página mínima de Angular y esa página llama a un comando de prueba de Rust.
 
 No hay funcionalidad de producto. No existen biblioteca, importación, reproducción, descargas ni base de datos. No se han instalado SQLite, libmpv, yt-dlp ni FFmpeg. El esquema de [DATABASE.md](DATABASE.md) sigue pendiente de aprobación y no se ha creado ninguna migración.
 
@@ -60,6 +60,32 @@ Comprobaciones ejecutadas:
 
 Nota de entorno: Avast inspecciona el HTTPS de este equipo. npm funciona con `NODE_OPTIONS=--use-system-ca`, definida para el usuario. El terminal del agente de Cursor no hereda esa variable, así que en ese terminal hay que definirla en cada proceso.
 
+## F1.2 Comprobar el puente entre interfaz y Rust
+
+Hecha el 2026-11-05.
+
+Implementación:
+
+- Rust: comando `bridge_check(fail: bool) -> Result<String, String>` en `src-tauri/src/commands.rs`, registrado en `lib.rs` con `invoke_handler`. Con `fail = false` devuelve «Respuesta de Rust: puente operativo». Con `fail = true` devuelve un error que empieza por el código `INTENTIONAL_FAILURE: `.
+- Angular: `BridgeService` (`src/app/bridge/bridge.service.ts`) es el único punto que llama a `invoke`. Devuelve un resultado de tres tipos: respuesta, fallo provocado (error con el código `INTENTIONAL_FAILURE: `) o error de comunicación (cualquier otro rechazo, incluida la ausencia de Tauri).
+- Interfaz: el componente `App` muestra los botones «Probar conexión con Rust» y «Provocar un fallo». Ambos se deshabilitan mientras hay una comprobación en curso. La respuesta se marca en verde, el fallo provocado en ámbar y el error de comunicación en rojo.
+- Dependencia nueva de npm: `@tauri-apps/api` 2.12.4, la API oficial para invocar comandos. No se añadieron crates ni plugins, y `capabilities/default.json` no cambió: los comandos propios de la aplicación no necesitan permisos adicionales.
+
+Comprobaciones ejecutadas:
+
+| Comprobación | Resultado |
+| --- | --- |
+| `npm run build` | Correcta |
+| `npm test -- --watch=false` | 10 de 10 pruebas superadas: las 2 anteriores, 4 del componente y 4 del servicio con `mockIPC` de `@tauri-apps/api/mocks` |
+| `cargo fmt --check` | Correcta |
+| `cargo check` | Correcta |
+| `cargo test` | 2 de 2 pruebas superadas |
+| `npm run tauri:dev`, botón «Probar conexión con Rust» | La ventana muestra «Respuesta de Rust: puente operativo» |
+| `npm run tauri:dev`, botón «Provocar un fallo» | La ventana muestra el fallo provocado en ámbar y la aplicación sigue abierta |
+| Página abierta fuera de Tauri, en un navegador | Muestra «Error de comunicación con Tauri» en rojo sin bloquear la página |
+
+Los botones de la ventana de escritorio se pulsaron con UI Automation de Windows y el resultado se comprobó leyendo el texto de la ventana y con capturas. El deshabilitado de los botones durante la llamada se comprueba con una prueba unitaria: en la aplicación real el comando responde demasiado rápido para verlo a simple vista.
+
 ## Documentación
 
 | Documento | Estado | Notas |
@@ -68,7 +94,7 @@ Nota de entorno: Avast inspecciona el HTTPS de este equipo. npm funciona con `NO
 | [REQUIREMENTS.md](REQUIREMENTS.md) | Redactado y revisado | Confirmado, previsto, pendiente y futuro |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Redactado y revisado | Estructura del repositorio actualizada con F1.1 |
 | [DATABASE.md](DATABASE.md) | Propuesta sin aprobar | No crear tablas a partir de él |
-| [ROADMAP.md](ROADMAP.md) | Redactado y revisado | F1.1 marcada como hecha |
+| [ROADMAP.md](ROADMAP.md) | Redactado y revisado | F1.1 y F1.2 marcadas como hechas |
 | [DECISIONS.md](DECISIONS.md) | Redactado y revisado | Confirmadas y pendientes |
 | [PROGRESS.md](PROGRESS.md) | Actualizado | Este documento |
 
@@ -77,7 +103,7 @@ Nota de entorno: Avast inspecciona el HTTPS de este equipo. npm funciona con `NO
 | Fase | Tema | Estado |
 | --- | --- | --- |
 | 0 | Cerrar la planificación | F0.1, F0.3 y F0.4 hechas como documentación. F0.2 pendiente: el esquema no está aprobado |
-| 1 | Esqueleto e integración inicial de libmpv | En curso. F1.1 hecha. F1.2 a F1.5 pendientes |
+| 1 | Esqueleto e integración inicial de libmpv | En curso. F1.1 y F1.2 hechas. F1.3 a F1.5 pendientes |
 | 2 | Persistencia | No iniciada. Bloqueada por la aprobación del esquema y por la ruta de los datos |
 | 3 | Importación | No iniciada. La segunda ficha por archivo sigue bloqueada |
 | 4 | Consulta de la biblioteca | No iniciada |
@@ -120,7 +146,7 @@ Decisiones ya cerradas: extracción de portadas (DC-12), datos propios de cada f
 
 ## Siguiente paso
 
-F1.1 está cerrada. El trabajo se detiene antes de F1.2, la comprobación del puente entre la interfaz y Rust, a la espera de autorización.
+F1.2 está cerrada. El trabajo se detiene antes de F1.3, el armazón visual, a la espera de autorización.
 
 ## Historial
 
@@ -129,3 +155,4 @@ F1.1 está cerrada. El trabajo se detiene antes de F1.2, la comprobación del pu
 | 2026-11-04 | Se creó la documentación inicial de planificación. |
 | 2026-11-04 | Segunda revisión aplicada en los siete documentos. El esquema sigue sin aprobar. |
 | 2026-11-04 | F1.1 hecha: Angular 22.2.5 y Tauri 2 inicializados en la raíz. La aplicación abre una ventana de escritorio en Windows con la página de Angular. Sin funcionalidad de producto. |
+| 2026-11-05 | F1.2 hecha: comando de prueba `bridge_check` en Rust invocado desde Angular con `@tauri-apps/api`. Respuesta, fallo provocado y error de comunicación se muestran de forma distinta sin cerrar la aplicación. |
