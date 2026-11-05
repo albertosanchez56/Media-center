@@ -1,0 +1,55 @@
+<div class="brand">
+  <span class="logo"><app-icon name="logo" /></span>
+  <span class="brand-name label">Media Center</span>
+</div>
+
+<nav class="libraries" aria-label="Bibliotecas">
+  <ul>
+    @for (library of libraries; track library.id) {
+      <li>
+        <button
+          type="button"
+          class="nav-item"
+          [class.active]="section() === library.id"
+          [attr.aria-current]="section() === library.id ? 'page' : null"
+          [title]="library.name"
+          (click)="select(library.id)"
+        >
+          <app-icon [name]="library.icon" />
+          <span class="label">{{ library.name }}</span>
+        </button>
+      </li>
+    }
+  </ul>
+</nav>
+
+<section class="playlists" aria-labelledby="playlists-heading">
+  <h2 id="playlists-heading" class="section-heading" title="Playlists: todavía no hay ninguna">
+    <app-icon name="playlist" />
+    <span class="label">Playlists</span>
+  </h2>
+  <div class="playlists-body">
+    <app-empty-state
+      icon="playlist"
+      heading="Todavía no hay playlists"
+      text="Podrás crearlas cuando la biblioteca tenga contenido."
+      [compact]="true"
+    />
+  </div>
+</section>
+
+@if (showDiagnostics) {
+  <div class="footer">
+    <button
+      type="button"
+      class="nav-item diagnostics"
+      [class.active]="section() === 'diagnostics'"
+      [attr.aria-current]="section() === 'diagnostics' ? 'page' : null"
+      title="Diagnóstico (solo en desarrollo)"
+      (click)="select('diagnostics')"
+    >
+      <app-icon name="diagnostics" />
+      <span class="label">Diagnóstico</span>
+    </button>
+  </div>
+}

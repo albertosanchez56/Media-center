@@ -1,0 +1,16 @@
+$wide: 1200px;
+$medium: 900px;
+
+/// Ventanas de 900 a 1199 px.
+@mixin medium {
+  @media (max-width: #{$wide - 1px}) {
+    @content;
+  }
+}
+
+/// Ventanas de menos de 900 px.
+@mixin narrow {
+  @media (max-width: #{$medium - 1px}) {
+    @content;
+  }
+}

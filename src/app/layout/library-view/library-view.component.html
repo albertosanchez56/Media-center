@@ -1,0 +1,15 @@
+<header class="view-header">
+  <span class="view-icon"><app-icon [name]="library().icon" /></span>
+  <div class="view-titles">
+    <p class="eyebrow">Biblioteca</p>
+    <h1>{{ library().name }}</h1>
+  </div>
+</header>
+
+<div class="library-content">
+  <app-empty-state
+    [icon]="library().icon"
+    [heading]="library().emptyTitle"
+    [text]="library().emptyText"
+  />
+</div>

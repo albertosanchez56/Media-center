@@ -1,87 +1,56 @@
-import { TestBed } from '@angular/core/testing';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { App } from './app';
-import { BridgeResult, BridgeService } from './bridge/bridge.service';
+import { BridgeService } from './bridge/bridge.service';
 
 describe('App', () => {
-  let pending: ((result: BridgeResult) => void) | null;
-  let calls: boolean[];
+  let fixture: ComponentFixture<App>;
+  let element: HTMLElement;
 
   beforeEach(async () => {
-    pending = null;
-    calls = [];
     const bridgeStub: Pick<BridgeService, 'check'> = {
-      check: (fail) => {
-        calls.push(fail);
-        return new Promise((resolve) => (pending = resolve));
-      },
+      check: () => new Promise(() => undefined),
     };
 
     await TestBed.configureTestingModule({
       imports: [App],
       providers: [{ provide: BridgeService, useValue: bridgeStub }],
-    })
-      .compileComponents();
-  });
+    }).compileComponents();
 
-  async function clickAndResolve(index: number, result: BridgeResult): Promise<HTMLElement> {
-    const fixture = TestBed.createComponent(App);
+    fixture = TestBed.createComponent(App);
     await fixture.whenStable();
-    const compiled = fixture.nativeElement as HTMLElement;
-    compiled.querySelectorAll('button')[index].click();
-    fixture.detectChanges();
-    pending?.(result);
-    await fixture.whenStable();
-    fixture.detectChanges();
-    return compiled;
-  }
+    element = fixture.nativeElement as HTMLElement;
+  });
 
   it('should create the app', () => {
-    const fixture = TestBed.createComponent(App);
-    const app = fixture.componentInstance;
-    expect(app).toBeTruthy();
+    expect(fixture.componentInstance).toBeTruthy();
   });
 
-  it('should render title', async () => {
-    const fixture = TestBed.createComponent(App);
+  it('should render the Media Center brand', () => {
+    expect(element.querySelector('.brand')?.textContent).toContain('Media Center');
+  });
+
+  it('should render the four zones', () => {
+    expect(element.querySelector('nav[aria-label="Bibliotecas"]')).not.toBeNull();
+    expect(element.querySelector('main')).not.toBeNull();
+    expect(element.querySelector('aside[aria-label="Ahora suena"]')).not.toBeNull();
+    expect(element.querySelector('section[aria-label="Controles de reproducción"]')).not.toBeNull();
+  });
+
+  it('should show the music library by default', () => {
+    expect(element.querySelector('main h1')?.textContent).toContain('Música');
+  });
+
+  it('should change the central title when another library is chosen', async () => {
+    const buttons = element.querySelectorAll<HTMLButtonElement>('nav[aria-label="Bibliotecas"] button');
+    buttons[2].click();
     await fixture.whenStable();
-    const compiled = fixture.nativeElement as HTMLElement;
-    expect(compiled.querySelector('h1')?.textContent).toContain('Media Center');
+    expect(element.querySelector('main h1')?.textContent).toContain('Películas');
   });
 
-  it('should show the Rust response', async () => {
-    const compiled = await clickAndResolve(0, { kind: 'success', message: 'Respuesta de Rust' });
-    expect(calls).toEqual([false]);
-    expect(compiled.querySelector('.success')?.textContent).toContain('Respuesta de Rust');
-  });
-
-  it('should show an intentional failure differently from a communication error', async () => {
-    const compiled = await clickAndResolve(1, { kind: 'intentional-error', message: 'Fallo' });
-    expect(calls).toEqual([true]);
-    expect(compiled.querySelector('.intentional-error')?.textContent).toContain('Fallo provocado');
-    expect(compiled.querySelector('.communication-error')).toBeNull();
-  });
-
-  it('should show a communication error', async () => {
-    const compiled = await clickAndResolve(0, { kind: 'communication-error', message: 'Sin Tauri' });
-    expect(compiled.querySelector('.communication-error')?.textContent).toContain('Sin Tauri');
-    expect(compiled.querySelector('.intentional-error')).toBeNull();
-  });
-
-  it('should disable both buttons while a check is running', async () => {
-    const fixture = TestBed.createComponent(App);
+  it('should open the bridge check from the diagnostics entry', async () => {
+    element.querySelector<HTMLButtonElement>('.diagnostics')!.click();
     await fixture.whenStable();
-    const compiled = fixture.nativeElement as HTMLElement;
-    const buttons = Array.from(compiled.querySelectorAll('button'));
-
-    buttons[0].click();
-    fixture.detectChanges();
-    expect(buttons.every((button) => button.disabled)).toBe(true);
-    buttons[1].click();
-    expect(calls).toEqual([false]);
-
-    pending?.({ kind: 'success', message: 'ok' });
-    await fixture.whenStable();
-    fixture.detectChanges();
-    expect(buttons.every((button) => button.disabled)).toBe(false);
+    expect(element.querySelector('main h1')?.textContent).toContain('Diagnóstico');
+    expect(element.querySelector('main')?.textContent).toContain('Probar conexión con Rust');
   });
 });

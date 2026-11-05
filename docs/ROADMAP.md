@@ -7,7 +7,7 @@ Cada tarea es un incremento pequeño. No se inicia una tarea hasta cerrar las de
 
 Leyenda de estados: pendiente, bloqueada, en curso, hecha.
 
-Las tareas hechas de la fase 0 son documentación. F1.1 dejó una aplicación de escritorio vacía. F1.2 añadió un comando de prueba de Rust invocado desde la interfaz. No hay funcionalidad de biblioteca, reproducción, importación ni descargas implementada.
+Las tareas hechas de la fase 0 son documentación. F1.1 dejó una aplicación de escritorio vacía. F1.2 añadió un comando de prueba de Rust invocado desde la interfaz. F1.3 colocó el armazón visual de cuatro zonas sin datos reales. No hay funcionalidad de biblioteca, reproducción, importación ni descargas implementada.
 
 ## Fase 0 — Cerrar la planificación
 
@@ -83,7 +83,7 @@ Objetivo: abrir una ventana de escritorio, comprobar el puente con Rust e incorp
 
 ### F1.3 Montar el armazón visual
 
-- **Estado:** pendiente
+- **Estado:** hecha
 - **Depende de:** F1.1
 - **Descripción:** Colocar menú lateral, zona central, panel derecho y barra inferior, con tema oscuro y sin datos reales.
 - **Criterios de aceptación:**

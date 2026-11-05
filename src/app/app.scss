@@ -1,82 +1,67 @@
-.shell {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 1.5rem;
-  min-height: 100vh;
-  padding: 1rem;
-  box-sizing: border-box;
+@use 'breakpoints';
+
+.app-shell {
+  display: grid;
+  height: 100vh;
+  grid-template-columns: var(--sidebar-width) minmax(0, 1fr) var(--panel-width);
+  grid-template-rows: minmax(0, 1fr) var(--player-height);
+  grid-template-areas:
+    'sidebar main panel'
+    'player player player';
+  overflow: hidden;
 }
 
-h1 {
-  margin: 0;
-  font-size: 2rem;
-  font-weight: 600;
+.sidebar {
+  grid-area: sidebar;
+  min-width: 0;
+  min-height: 0;
 }
 
-.bridge {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1rem;
-  max-width: 100%;
+.main {
+  grid-area: main;
+  min-width: 0;
+  min-height: 0;
+  padding: var(--space-6);
+  overflow: auto;
 }
 
-.actions {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 0.75rem;
+.panel {
+  grid-area: panel;
+  min-width: 0;
+  min-height: 0;
 }
 
-button {
-  padding: 0.5rem 1rem;
-  border: 1px solid #3a3a3a;
-  border-radius: 6px;
-  background-color: #1f1f1f;
-  color: inherit;
-  font: inherit;
-  cursor: pointer;
+.player {
+  grid-area: player;
+  min-width: 0;
+}
 
-  &:hover:not(:disabled) {
-    background-color: #2a2a2a;
+@include breakpoints.medium {
+  .app-shell {
+    --sidebar-width: 220px;
+    --panel-width: 260px;
   }
 
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
+  .main {
+    padding: var(--space-5);
   }
 }
 
-.status {
-  margin: 0;
-  text-align: center;
-
-  span {
-    display: inline-block;
-    padding: 0.5rem 0.75rem;
-    border-left: 4px solid transparent;
-    border-radius: 4px;
+// El panel deja de ocupar columna, pero sigue siendo una zona propia que podrá
+// mostrarse como panel desplegable sin cambiar la rejilla.
+@include breakpoints.narrow {
+  .app-shell {
+    grid-template-columns: var(--sidebar-rail-width) minmax(0, 1fr);
+    grid-template-areas:
+      'sidebar main'
+      'player player';
   }
 
-  .idle,
-  .pending {
-    color: #a0a0a0;
+  .main {
+    padding: var(--space-4);
   }
 
-  .success {
-    border-color: #4caf50;
-    background-color: rgba(76, 175, 80, 0.12);
-  }
-
-  .intentional-error {
-    border-color: #ffb300;
-    background-color: rgba(255, 179, 0, 0.12);
-  }
-
-  .communication-error {
-    border-color: #e53935;
-    background-color: rgba(229, 57, 53, 0.15);
+  .panel {
+    display: none;
   }
 }

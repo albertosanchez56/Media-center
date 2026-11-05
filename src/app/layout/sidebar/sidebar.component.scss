@@ -1,0 +1,149 @@
+@use 'breakpoints';
+
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  height: 100%;
+  min-height: 0;
+  padding: var(--space-4) var(--space-3);
+  background-color: var(--color-surface);
+  border-right: 1px solid var(--color-border);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-1) var(--space-2);
+}
+
+.logo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, var(--color-accent), #4fb3ff);
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.brand-name {
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+ul {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-muted);
+  text-align: left;
+  cursor: pointer;
+
+  &:hover {
+    background-color: var(--color-surface-hover);
+    color: var(--color-text);
+  }
+
+  &.active {
+    background-color: var(--color-accent-soft);
+    color: var(--color-text);
+  }
+}
+
+.label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.playlists {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border);
+}
+
+.section-heading {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0 var(--space-3) var(--space-2);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.playlists-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.footer {
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border);
+}
+
+.diagnostics {
+  font-size: var(--font-size-sm);
+}
+
+@include breakpoints.narrow {
+  :host {
+    align-items: center;
+    padding: var(--space-4) var(--space-2);
+  }
+
+  .brand,
+  .nav-item,
+  .section-heading {
+    justify-content: center;
+    padding-left: var(--space-2);
+    padding-right: var(--space-2);
+  }
+
+  .libraries,
+  .playlists,
+  .footer {
+    width: 100%;
+  }
+
+  // El texto se oculta a la vista pero sigue dando nombre accesible a cada control.
+  .label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .playlists-body {
+    display: none;
+  }
+}

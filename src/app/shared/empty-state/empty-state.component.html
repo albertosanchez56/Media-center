@@ -1,0 +1,7 @@
+<div class="empty-state" [class.compact]="compact()">
+  <span class="badge"><app-icon [name]="icon()" /></span>
+  <p class="heading">{{ heading() }}</p>
+  @if (text()) {
+    <p class="text">{{ text() }}</p>
+  }
+</div>

@@ -5,7 +5,7 @@ Estado del documento: vivo. Se actualiza al cerrar trabajo de planificación o d
 
 ## Estado general
 
-El desarrollo **ha empezado**. Las tareas F1.1 y F1.2 están hechas: Media Center abre como aplicación de escritorio de Windows, muestra una página mínima de Angular y esa página llama a un comando de prueba de Rust.
+El desarrollo **ha empezado**. Las tareas F1.1, F1.2 y F1.3 están hechas: Media Center abre como aplicación de escritorio de Windows, muestra el armazón visual de cuatro zonas sin datos reales y, en desarrollo, ofrece una sección de diagnóstico que llama a un comando de prueba de Rust.
 
 No hay funcionalidad de producto. No existen biblioteca, importación, reproducción, descargas ni base de datos. No se han instalado SQLite, libmpv, yt-dlp ni FFmpeg. El esquema de [DATABASE.md](DATABASE.md) sigue pendiente de aprobación y no se ha creado ninguna migración.
 
@@ -86,6 +86,53 @@ Comprobaciones ejecutadas:
 
 Los botones de la ventana de escritorio se pulsaron con UI Automation de Windows y el resultado se comprobó leyendo el texto de la ventana y con capturas. El deshabilitado de los botones durante la llamada se comprueba con una prueba unitaria: en la aplicación real el comando responde demasiado rápido para verlo a simple vista.
 
+Desde F1.3, esta comprobación vive en la sección «Diagnóstico» del armazón.
+
+## F1.3 Montar el armazón visual
+
+Hecha el 2026-11-05.
+
+Implementación:
+
+- Estilos globales: tokens de color, espacio, radios, tipografía y tamaños como propiedades CSS en `src/styles/_tokens.scss`, y mixins de puntos de corte en `src/styles/_breakpoints.scss`. `angular.json` añade `src/styles` a `includePaths`. Tema oscuro único.
+- Navegación: `NavigationService` (`src/app/navigation/`) guarda la sección activa en un signal. Las bibliotecas Música, Vídeos y Películas se definen en `navigation.ts`. Música es la sección inicial. No se usa `@angular/router`.
+- Componentes compartidos: `IconComponent`, con iconos SVG propios en línea y sin dependencias, y `EmptyStateComponent`.
+- Zonas, en `src/app/layout/`:
+  - `SidebarComponent`: logotipo y nombre, las tres bibliotecas, la sección de playlists vacía y la entrada «Diagnóstico».
+  - `LibraryViewComponent`: encabezado de la biblioteca activa y estado vacío dentro de un contenedor reservado para la futura lista o cuadrícula.
+  - `NowPlayingPanelComponent`: «Ahora suena» con un hueco cuadrado para portada o vídeo y el estado «Sin reproducción».
+  - `PlayerBarComponent`: «Nada en reproducción», botones anterior, reproducir y siguiente, barra de progreso y volumen, todos deshabilitados.
+- `App` es una rejilla CSS con las cuatro zonas. Cada zona tiene su propio desplazamiento y `min-width: 0`.
+- Diagnóstico: la interfaz de F1.2 pasa sin cambios de lógica a `BridgeDiagnosticsComponent` (`src/app/diagnostics/`). La entrada solo aparece cuando `isDevMode()` es verdadero, así que no existe en la compilación de producción.
+- `tauri.conf.json`: tamaño mínimo de la ventana de 640 × 480 px.
+- No se añadieron dependencias.
+
+Comportamiento según el ancho de la ventana:
+
+| Ancho | Menú lateral | Panel derecho | Barra inferior |
+| --- | --- | --- | --- |
+| 1200 px o más | 240 px, con textos | 320 px | Completa |
+| De 900 a 1199 px | 220 px, con textos | 260 px | Completa |
+| Menos de 900 px | Barra de iconos de 72 px. Las playlists muestran solo su icono | Oculto | Sin volumen ni texto secundario |
+
+En la barra de iconos los textos siguen en el DOM, ocultos visualmente, y cada botón tiene `title`, así que conserva su nombre accesible. Por debajo de 900 px el panel derecho conserva su área propia en la rejilla y su componente independiente: más adelante podrá mostrarse como panel desplegable o vista alternativa. Eso no está implementado.
+
+Comprobaciones ejecutadas:
+
+| Comprobación | Resultado |
+| --- | --- |
+| `npm run build` | Correcta |
+| `npm test -- --watch=false` | 24 de 24 pruebas superadas en 8 archivos. Las 4 pruebas de la interfaz de F1.2 pasan al spec de diagnóstico y las 4 del servicio no cambian |
+| `cargo fmt --check` | Correcta |
+| `cargo check` | Correcta |
+| `cargo test` | 2 de 2 pruebas superadas |
+| `npm run tauri:dev` a 1280 × 800, 1199, 1000, 900, 899, 700 y 640 × 480 px de contenido | Cuatro zonas a partir de 900 px. Cambio de menú y panel en 1200 y en 900 px. Sin solapamientos ni desplazamiento horizontal, también en 640 × 480 |
+| Tamaño mínimo | La ventana declara un mínimo de 656 × 519 px exteriores, es decir, 640 × 480 px de contenido con el marco de Windows |
+| Navegación | «Vídeos» y «Películas» cambian el título y el estado vacío. «Diagnóstico» muestra la comprobación, y Rust responde con su mensaje y con el fallo provocado |
+| Teclado y accesibilidad | Con el menú en iconos, Tab recorre «Música», «Vídeos» y «Películas» con sus nombres, el foco se ve y Enter abre la biblioteca. Los controles de reproducción están deshabilitados y fuera del orden de tabulación |
+
+La ventana se redimensionó con la API de Win32. Los botones se pulsaron con UI Automation y con teclas enviadas a la ventana, y los resultados se comprobaron con capturas. El tamaño mínimo se leyó con el mensaje `WM_GETMINMAXINFO` en lugar de arrastrar el borde a mano.
+
 ## Documentación
 
 | Documento | Estado | Notas |
@@ -94,7 +141,7 @@ Los botones de la ventana de escritorio se pulsaron con UI Automation de Windows
 | [REQUIREMENTS.md](REQUIREMENTS.md) | Redactado y revisado | Confirmado, previsto, pendiente y futuro |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Redactado y revisado | Estructura del repositorio actualizada con F1.1 |
 | [DATABASE.md](DATABASE.md) | Propuesta sin aprobar | No crear tablas a partir de él |
-| [ROADMAP.md](ROADMAP.md) | Redactado y revisado | F1.1 y F1.2 marcadas como hechas |
+| [ROADMAP.md](ROADMAP.md) | Redactado y revisado | F1.1, F1.2 y F1.3 marcadas como hechas |
 | [DECISIONS.md](DECISIONS.md) | Redactado y revisado | Confirmadas y pendientes |
 | [PROGRESS.md](PROGRESS.md) | Actualizado | Este documento |
 
@@ -103,7 +150,7 @@ Los botones de la ventana de escritorio se pulsaron con UI Automation de Windows
 | Fase | Tema | Estado |
 | --- | --- | --- |
 | 0 | Cerrar la planificación | F0.1, F0.3 y F0.4 hechas como documentación. F0.2 pendiente: el esquema no está aprobado |
-| 1 | Esqueleto e integración inicial de libmpv | En curso. F1.1 y F1.2 hechas. F1.3 a F1.5 pendientes |
+| 1 | Esqueleto e integración inicial de libmpv | En curso. F1.1, F1.2 y F1.3 hechas. F1.4 y F1.5 pendientes |
 | 2 | Persistencia | No iniciada. Bloqueada por la aprobación del esquema y por la ruta de los datos |
 | 3 | Importación | No iniciada. La segunda ficha por archivo sigue bloqueada |
 | 4 | Consulta de la biblioteca | No iniciada |
@@ -146,7 +193,7 @@ Decisiones ya cerradas: extracción de portadas (DC-12), datos propios de cada f
 
 ## Siguiente paso
 
-F1.2 está cerrada. El trabajo se detiene antes de F1.3, el armazón visual, a la espera de autorización.
+F1.3 está cerrada. El trabajo se detiene antes de F1.4, la incorporación de libmpv en la ventana, a la espera de autorización.
 
 ## Historial
 
@@ -156,3 +203,4 @@ F1.2 está cerrada. El trabajo se detiene antes de F1.3, el armazón visual, a l
 | 2026-11-04 | Segunda revisión aplicada en los siete documentos. El esquema sigue sin aprobar. |
 | 2026-11-04 | F1.1 hecha: Angular 22.2.5 y Tauri 2 inicializados en la raíz. La aplicación abre una ventana de escritorio en Windows con la página de Angular. Sin funcionalidad de producto. |
 | 2026-11-05 | F1.2 hecha: comando de prueba `bridge_check` en Rust invocado desde Angular con `@tauri-apps/api`. Respuesta, fallo provocado y error de comunicación se muestran de forma distinta sin cerrar la aplicación. |
+| 2026-11-05 | F1.3 hecha: armazón visual oscuro con menú lateral, zona central, panel derecho y barra inferior, adaptable desde 640 × 480 px. La comprobación de F1.2 pasa a la sección «Diagnóstico», visible solo en desarrollo. |

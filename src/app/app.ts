@@ -1,29 +1,27 @@
-import { Component, inject, signal } from '@angular/core';
-import { BridgeResult, BridgeService } from './bridge/bridge.service';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { BridgeDiagnosticsComponent } from './diagnostics/bridge-diagnostics/bridge-diagnostics.component';
+import { LibraryViewComponent } from './layout/library-view/library-view.component';
+import { NowPlayingPanelComponent } from './layout/now-playing-panel/now-playing-panel.component';
+import { PlayerBarComponent } from './layout/player-bar/player-bar.component';
+import { SidebarComponent } from './layout/sidebar/sidebar.component';
+import { NavigationService } from './navigation/navigation.service';
 
 @Component({
-  imports: [],
   selector: 'app-root',
-  styleUrl: './app.scss',
+  imports: [
+    SidebarComponent,
+    LibraryViewComponent,
+    NowPlayingPanelComponent,
+    PlayerBarComponent,
+    BridgeDiagnosticsComponent,
+  ],
   templateUrl: './app.html',
+  styleUrl: './app.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class App {
-  private readonly bridge = inject(BridgeService);
+  private readonly navigation = inject(NavigationService);
 
-  protected readonly title = signal('Media Center');
-  protected readonly checking = signal(false);
-  protected readonly result = signal<BridgeResult | null>(null);
-
-  protected async check(fail: boolean): Promise<void> {
-    if (this.checking()) {
-      return;
-    }
-    this.checking.set(true);
-    this.result.set(null);
-    try {
-      this.result.set(await this.bridge.check(fail));
-    } finally {
-      this.checking.set(false);
-    }
-  }
+  protected readonly section = this.navigation.section;
+  protected readonly currentLibrary = this.navigation.currentLibrary;
 }

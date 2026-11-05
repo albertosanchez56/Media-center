@@ -1,0 +1,31 @@
+<div class="track">
+  <span class="artwork"><app-icon name="music" /></span>
+  <div class="track-text">
+    <p class="track-title">Nada en reproducción</p>
+    <p class="track-hint">Elige una canción cuando haya música en la biblioteca</p>
+  </div>
+</div>
+
+<div class="transport">
+  <div class="buttons">
+    <button type="button" class="control" aria-label="Anterior" [title]="unavailable" disabled>
+      <app-icon name="previous" />
+    </button>
+    <button type="button" class="control primary" aria-label="Reproducir" [title]="unavailable" disabled>
+      <app-icon name="play" />
+    </button>
+    <button type="button" class="control" aria-label="Siguiente" [title]="unavailable" disabled>
+      <app-icon name="next" />
+    </button>
+  </div>
+  <div class="progress">
+    <span class="time">--:--</span>
+    <input type="range" aria-label="Posición de reproducción" [title]="unavailable" disabled value="0" />
+    <span class="time">--:--</span>
+  </div>
+</div>
+
+<div class="volume">
+  <app-icon name="volume" />
+  <input type="range" aria-label="Volumen" [title]="unavailable" disabled value="0" />
+</div>

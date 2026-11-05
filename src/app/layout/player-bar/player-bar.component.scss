@@ -1,0 +1,137 @@
+@use 'breakpoints';
+
+:host {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-4);
+  height: 100%;
+  padding: 0 var(--space-4);
+  background-color: var(--color-surface);
+  border-top: 1px solid var(--color-border);
+}
+
+.track {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.artwork {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-sm);
+  background-color: var(--color-surface-raised);
+  color: var(--color-text-subtle);
+  flex-shrink: 0;
+}
+
+.track-text {
+  min-width: 0;
+}
+
+.track-title,
+.track-hint {
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.track-title {
+  font-weight: 600;
+}
+
+.track-hint {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.transport {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.buttons {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.control {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--color-text-subtle);
+  --icon-size: 18px;
+
+  &:disabled {
+    cursor: not-allowed;
+  }
+
+  &.primary {
+    width: 38px;
+    height: 38px;
+    background-color: var(--color-surface-raised);
+  }
+}
+
+.progress {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  max-width: 520px;
+}
+
+.time {
+  color: var(--color-text-subtle);
+  font-size: var(--font-size-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+input[type='range'] {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  accent-color: var(--color-text-subtle);
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.volume {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  min-width: 0;
+  color: var(--color-text-subtle);
+
+  input {
+    max-width: 120px;
+  }
+}
+
+@include breakpoints.narrow {
+  :host {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+  }
+
+  .track-hint,
+  .volume {
+    display: none;
+  }
+}

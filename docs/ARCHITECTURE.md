@@ -1,7 +1,7 @@
 # Media Center — Arquitectura
 
-Estado del documento: propuesta de estructura, con la segunda revisión aplicada.  
-Última actualización: 2026-11-04.
+Estado del documento: propuesta de estructura, con la segunda revisión aplicada. La sección «Interfaz Angular implementada» describe el código que existe tras F1.3.  
+Última actualización: 2026-11-05.
 
 Este documento reparte responsabilidades entre la interfaz, la lógica y los datos. El procedimiento de copia y movimiento y la extracción de portadas están confirmados en [DECISIONS.md](DECISIONS.md). La integración concreta de libmpv, la herramienta de etiquetas y el esquema de SQLite siguen abiertos. El esquema propuesto está en [DATABASE.md](DATABASE.md) y no está aprobado.
 
@@ -52,6 +52,124 @@ Angular compila en `dist/media-center/browser`. Tauri carga esa misma ruta (`fro
 Las carpetas `library/`, `downloads/` y `data/` de la raíz están ignoradas por Git para no versionar material local. Su existencia en `.gitignore` no decide todavía dónde guardará los datos la aplicación instalada.
 
 El instalador de Windows es el empaquetado de esta aplicación de escritorio. No añade un servidor. Su formato y la inclusión de libmpv, FFmpeg y yt-dlp están pendientes en [DECISIONS.md](DECISIONS.md).
+
+## Interfaz Angular implementada
+
+Esta sección describe el código que existe después de F1.3. La interfaz es un armazón visual: no hay biblioteca, importación, reproducción ni base de datos detrás.
+
+Angular 22 funciona sin zonas (`zoneless`). Todos los componentes son standalone, usan `ChangeDetectionStrategy.OnPush` y guardan su estado en signals. No se usan `@angular/router` ni `@angular/forms`.
+
+### Estructura de `src/`
+
+```
+src/
+  styles.scss                   Estilos globales
+  styles/
+    _tokens.scss                Variables de diseño
+    _breakpoints.scss           Puntos de corte
+  app/
+    app.ts, app.html, app.scss  Contenedor principal
+    navigation/
+      navigation.ts             Bibliotecas y secciones
+      navigation.service.ts     Sección activa
+    layout/
+      sidebar/                  Menú lateral
+      library-view/             Zona central de una biblioteca
+      now-playing-panel/        Panel derecho
+      player-bar/               Barra inferior
+    shared/
+      icon/                     Iconos SVG
+      empty-state/              Estado vacío reutilizable
+    bridge/
+      bridge.service.ts         Único punto que llama a invoke
+    diagnostics/
+      bridge-diagnostics/       Comprobación del puente con Rust
+```
+
+Cada componente tiene su archivo `.spec.ts` con pruebas de Vitest.
+
+### App como contenedor principal
+
+`App` no tiene lógica de negocio. Sus responsabilidades son:
+
+- Colocar las cuatro zonas en una rejilla CSS: menú lateral, zona central, panel derecho y barra inferior.
+- Leer de `NavigationService` la sección activa y elegir qué se muestra en la zona central: `LibraryViewComponent` con la biblioteca activa o, en la sección de diagnóstico, `BridgeDiagnosticsComponent`.
+- Dar a cada zona su elemento semántico: `main` para la zona central, `aside` con `aria-label="Ahora suena"` para el panel y `section` con `aria-label="Controles de reproducción"` para la barra inferior. El menú aporta su propio `nav`.
+
+Cada zona tiene `min-width: 0` y su propio desplazamiento, para que el contenido de una no desborde a las demás.
+
+### Navegación provisional
+
+`navigation.ts` define:
+
+- `LibraryId`: `music`, `video` y `movie`.
+- `Section`: una biblioteca o `diagnostics`.
+- `LIBRARIES`: nombre, icono y textos del estado vacío de Música, Vídeos y Películas.
+
+`NavigationService` (`providedIn: 'root'`) guarda la sección activa en un signal privado que empieza en Música. Expone:
+
+| Miembro | Uso |
+| --- | --- |
+| `section` | Signal de solo lectura con la sección activa |
+| `currentLibrary` | Signal calculado con la biblioteca activa, o `null` si la sección es el diagnóstico |
+| `select(section)` | Cambia la sección |
+
+Es una navegación provisional: no hay rutas ni URL, y la sección no se conserva al reiniciar la aplicación. Cambiar de sección solo sustituye el contenido de la zona central. Si más adelante se adopta un router, podrá sustituir a este servicio sin tocar las zonas.
+
+### Componentes de layout
+
+| Componente | Implementado | Previsto, no implementado |
+| --- | --- | --- |
+| `SidebarComponent` | Logotipo y nombre. `nav` «Bibliotecas» con un botón por biblioteca, marcado con `aria-current="page"` cuando está activo. Sección de playlists con un estado vacío. Entrada «Diagnóstico» al pie, solo en desarrollo | Lista de playlists y su creación |
+| `LibraryViewComponent` | Recibe la biblioteca con `input.required`. Muestra el encabezado (icono, «Biblioteca» y nombre en `h1`) y un contenedor con el estado vacío de esa biblioteca | Vistas de lista y de cuadrícula con fichas reales, dentro del mismo contenedor |
+| `NowPlayingPanelComponent` | Título «Ahora suena» y un hueco cuadrado con el estado «Sin reproducción» | Portada, vídeo original o vídeo asociado del elemento en reproducción |
+| `PlayerBarComponent` | «Nada en reproducción», botones anterior, reproducir y siguiente, barra de posición y volumen. Todos deshabilitados, con nombre accesible y un `title` que avisa de que el reproductor llegará más adelante | Conexión con el controlador único de reproducción en Rust |
+
+Ningún componente de layout llama a Rust ni guarda datos.
+
+### Componentes reutilizables
+
+- `IconComponent` (`app-icon`): dibuja un SVG en línea de 24 × 24 con el trazo en `currentColor` y `aria-hidden`. Los trazados son propios y están en el mismo archivo, sin dependencias. `IconName` reúne los nombres disponibles: `logo`, `music`, `video`, `movie`, `playlist`, `diagnostics`, `play`, `previous`, `next`, `volume` y `now-playing`. El tamaño sale de la variable `--icon-size`.
+- `EmptyStateComponent` (`app-empty-state`): icono en un círculo, título y texto opcional. Entradas: `icon` y `heading` obligatorias, `text` y `compact`. La variante compacta se usa en el menú y en el panel derecho.
+
+### Diagnóstico entre Angular y Rust
+
+`BridgeDiagnosticsComponent` contiene la comprobación de F1.2: los botones «Probar conexión con Rust» y «Provocar un fallo», deshabilitados mientras hay una llamada en curso, y un mensaje con `role="status"`. La respuesta se marca en verde, el fallo provocado en ámbar y el error de comunicación en rojo.
+
+El componente llama a `BridgeService`, que es el único punto que usa `invoke` y que distingue respuesta, fallo provocado y error de comunicación. En Rust responde el comando `bridge_check`.
+
+La entrada «Diagnóstico» del menú solo se dibuja cuando `isDevMode()` es verdadero. En la compilación de producción no aparece, y la sección no es alcanzable desde la interfaz. Es una herramienta de desarrollo, no una función del producto.
+
+### Estilos
+
+| Archivo | Contenido |
+| --- | --- |
+| `src/styles/_tokens.scss` | Propiedades CSS en `:root`: colores del tema oscuro y de estado, espaciado, radios, tipografía y medidas de las zonas (`--sidebar-width`, `--sidebar-rail-width`, `--panel-width`, `--player-height`, `--icon-size`) |
+| `src/styles/_breakpoints.scss` | Mixins `medium` (menos de 1200 px) y `narrow` (menos de 900 px) |
+| `src/styles.scss` | Carga los tokens y define los estilos globales: `box-sizing`, altura completa sin desplazamiento de página, herencia de fuente en botones, foco visible con el color de acento y barras de desplazamiento finas |
+
+`angular.json` añade `src/styles` a `stylePreprocessorOptions.includePaths`, así que cada componente puede hacer `@use 'breakpoints'`. Los estilos de cada componente viven en su propio `.scss` y usan los tokens en lugar de valores fijos. Hay un solo tema, oscuro. No existe selector de tema.
+
+### Diseño adaptable
+
+| Ancho de la ventana | Menú lateral | Zona central | Panel derecho | Barra inferior |
+| --- | --- | --- | --- | --- |
+| 1200 px o más | 240 px, con textos | Ocupa el resto | 320 px | Completa |
+| De 900 a 1199 px | 220 px, con textos | Ocupa el resto | 260 px | Completa |
+| Menos de 900 px | Barra de iconos de 72 px. Las playlists muestran solo su icono | Ocupa el resto | Oculto, sin ocupar espacio | Sin volumen ni texto secundario |
+
+En la barra de iconos los textos siguen en el DOM, ocultos solo visualmente, y cada botón tiene `title`. Así conservan el nombre accesible y se pueden recorrer con Tab.
+
+`tauri.conf.json` fija un mínimo de 640 × 480 px de contenido para la ventana. El armazón está comprobado en ese tamaño sin desplazamiento horizontal.
+
+### Límites actuales de F1.3
+
+- No hay datos reales: las bibliotecas y las playlists muestran siempre su estado vacío.
+- La barra inferior y el panel derecho no reproducen nada. Sus controles están deshabilitados.
+- Por debajo de 900 px el panel derecho no tiene alternativa. Conserva su área propia en la rejilla y su componente independiente para mostrarse más adelante como panel desplegable o vista alternativa, pero eso no está implementado.
+- No hay búsqueda, filtros, formularios, importación, descargas ni ajustes en la interfaz.
+- No hay router: la navegación es el signal de `NavigationService`.
+- La única llamada a Rust es la del diagnóstico de desarrollo.
 
 ## Comunicación entre interfaz y Rust
 

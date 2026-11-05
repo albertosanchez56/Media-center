@@ -1,37 +1,19 @@
-<main class="shell">
-  <h1>{{ title() }}</h1>
+<div class="app-shell">
+  <app-sidebar class="sidebar" />
 
-  <section class="bridge" aria-label="Comprobación del puente con Rust">
-    <div class="actions">
-      <button type="button" [disabled]="checking()" (click)="check(false)">
-        Probar conexión con Rust
-      </button>
-      <button type="button" [disabled]="checking()" (click)="check(true)">
-        Provocar un fallo
-      </button>
-    </div>
+  <main class="main">
+    @if (section() === 'diagnostics') {
+      <app-bridge-diagnostics />
+    } @else if (currentLibrary(); as library) {
+      <app-library-view [library]="library" />
+    }
+  </main>
 
-    <p class="status" role="status">
-      @if (checking()) {
-        <span class="pending">Comprobando…</span>
-      } @else {
-        @switch (result()?.kind) {
-          @case ('success') {
-            <span class="success">{{ result()?.message }}</span>
-          }
-          @case ('intentional-error') {
-            <span class="intentional-error">Fallo provocado: {{ result()?.message }}</span>
-          }
-          @case ('communication-error') {
-            <span class="communication-error">
-              Error de comunicación con Tauri: {{ result()?.message }}
-            </span>
-          }
-          @default {
-            <span class="idle">Pulsa un botón para comprobar el puente.</span>
-          }
-        }
-      }
-    </p>
+  <aside class="panel" aria-label="Ahora suena">
+    <app-now-playing-panel />
+  </aside>
+
+  <section class="player" aria-label="Controles de reproducción">
+    <app-player-bar />
   </section>
-</main>
+</div>

@@ -1,0 +1,66 @@
+@use 'breakpoints';
+
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  min-height: 100%;
+}
+
+.view-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.view-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(135deg, var(--color-accent-soft), var(--color-surface-raised));
+  color: var(--color-accent);
+  flex-shrink: 0;
+  --icon-size: 30px;
+}
+
+.view-titles {
+  min-width: 0;
+}
+
+.eyebrow {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+h1 {
+  margin: 0;
+  font-size: var(--font-size-xl);
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.library-content {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-lg);
+}
+
+@include breakpoints.narrow {
+  .view-icon {
+    width: 48px;
+    height: 48px;
+    --icon-size: 24px;
+  }
+}
