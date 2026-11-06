@@ -69,8 +69,12 @@ export interface TrackInfo {
   externalFilename: string | null;
   albumart: boolean;
   title: string | null;
+  language: string | null;
   codec: string | null;
 }
+
+/** Pistas que se eligen a mano; `null` como id las desactiva. */
+export type TrackSelection = 'audio' | 'subtitle';
 
 export interface PropertyReading {
   name: string;
@@ -171,6 +175,24 @@ export class EngineService {
 
   tracks(): Promise<TrackReport> {
     return call('engine_tracks');
+  }
+
+  selectTrack(kind: TrackSelection, id: number | null): Promise<void> {
+    return call('engine_select_track', { kind, id });
+  }
+
+  addSubtitle(path: string): Promise<void> {
+    return call('engine_add_subtitle', { path });
+  }
+
+  /** Pantalla completa de la ventana de Tauri. Devuelve si la ventana ha quedado así. */
+  setWindowFullscreen(enabled: boolean): Promise<boolean> {
+    return call('engine_set_window_fullscreen', { enabled });
+  }
+
+  /** Propiedad `fullscreen` de mpv, solo para comprobar su efecto con la ventana incrustada. */
+  setEngineFullscreen(enabled: boolean): Promise<void> {
+    return call('engine_set_engine_fullscreen', { enabled });
   }
 
   windowReport(points: ClientPoint[]): Promise<WindowReport> {

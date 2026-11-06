@@ -12,13 +12,21 @@ import {
   EngineKind,
   EngineService,
   SurfaceRect,
+  TrackInfo,
   TrackReport,
+  TrackSelection,
   WindowReport,
 } from '../../engine/engine.service';
 import { VideoSurfaceDirective, toPhysicalRect } from '../../engine/video-surface.directive';
 import { describeError } from '../../shared/describe-error';
 
 export type StageSize = 'small' | 'medium' | 'expanded';
+
+/** Huecos entre los que se traslada la única superficie de vídeo. */
+export type VideoSlot = 'main' | 'mini';
+
+/** `window` solo pone la ventana a pantalla completa; `video` además hace que el vídeo la ocupe. */
+export type FullscreenMode = 'off' | 'window' | 'video';
 
 export const ENGINE_OPTIONS: readonly { kind: EngineKind; label: string }[] = [
   { kind: 'libmpv', label: 'A · libmpv dentro de la aplicación' },
@@ -29,6 +37,11 @@ export const STAGE_SIZES: readonly { size: StageSize; label: string }[] = [
   { size: 'small', label: 'Pequeño' },
   { size: 'medium', label: 'Mediano' },
   { size: 'expanded', label: 'Ampliado' },
+];
+
+export const VIDEO_SLOTS: readonly { slot: VideoSlot; label: string }[] = [
+  { slot: 'main', label: 'Hueco principal' },
+  { slot: 'mini', label: 'Minirreproductor' },
 ];
 
 export const MENU_ITEMS = ['Primera opción', 'Segunda opción', 'Tercera opción'];
@@ -48,6 +61,7 @@ export function cleanPath(value: string): string {
   templateUrl: './engine-diagnostics.component.html',
   styleUrl: './engine-diagnostics.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  host: { '(document:keydown.escape)': 'exitFullscreen()' },
 })
 export class EngineDiagnosticsComponent {
   private readonly engine = inject(EngineService);
@@ -55,6 +69,7 @@ export class EngineDiagnosticsComponent {
 
   protected readonly engineOptions = ENGINE_OPTIONS;
   protected readonly stageSizes = STAGE_SIZES;
+  protected readonly slots = VIDEO_SLOTS;
   protected readonly menuItems = MENU_ITEMS;
 
   protected readonly state = this.engine.state;
@@ -65,8 +80,15 @@ export class EngineDiagnosticsComponent {
   protected readonly path = signal('');
   protected readonly associatedVideo = signal('');
   protected readonly d3d11Flip = signal(false);
+  protected readonly subtitlePath = signal('');
 
   protected readonly size = signal<StageSize>('medium');
+  protected readonly slot = signal<VideoSlot>('main');
+  protected readonly fullscreen = signal<FullscreenMode>('off');
+  protected readonly engineFullscreen = signal(false);
+  protected readonly stageSize = computed(() =>
+    this.fullscreen() === 'video' ? 'fullscreen' : this.size(),
+  );
   protected readonly overlay = signal(false);
   protected readonly clip = signal(false);
   protected readonly menuOpen = signal(false);
@@ -82,6 +104,9 @@ export class EngineDiagnosticsComponent {
   constructor() {
     this.engine.connect().catch((error: unknown) => this.error.set(describeError(error)));
     inject(DestroyRef).onDestroy(() => {
+      if (this.fullscreen() !== 'off') {
+        this.engine.setWindowFullscreen(false).catch(() => undefined);
+      }
       if (this.active()) {
         this.engine.stop().catch(() => undefined);
       }
@@ -90,6 +115,7 @@ export class EngineDiagnosticsComponent {
 
   protected readonly mainPath = computed(() => cleanPath(this.path()));
   protected readonly associatedPath = computed(() => cleanPath(this.associatedVideo()));
+  protected readonly cleanSubtitlePath = computed(() => cleanPath(this.subtitlePath()));
 
   protected open(): Promise<void> {
     const associated = this.associatedPath();
@@ -118,6 +144,65 @@ export class EngineDiagnosticsComponent {
 
   protected readTracks(): Promise<void> {
     return this.run(async () => this.tracks.set(await this.engine.tracks()));
+  }
+
+  /** Tipo de pista que se puede activar desde la tabla; `null` si ya está activa o no se elige. */
+  protected selectable(track: TrackInfo): TrackSelection | null {
+    if (track.selected || track.id === null) {
+      return null;
+    }
+    return track.kind === 'audio' ? 'audio' : track.kind === 'sub' ? 'subtitle' : null;
+  }
+
+  protected useTrack(kind: TrackSelection, id: number | null): Promise<void> {
+    return this.run(async () => {
+      await this.engine.selectTrack(kind, id);
+      this.tracks.set(await this.engine.tracks());
+    });
+  }
+
+  protected addSubtitle(): Promise<void> {
+    const path = this.cleanSubtitlePath();
+    return this.run(async () => {
+      await this.engine.addSubtitle(path);
+      this.tracks.set(await this.engine.tracks());
+    });
+  }
+
+  protected toggleWindowFullscreen(): Promise<void> {
+    const enable = this.fullscreen() === 'off';
+    return this.run(async () => {
+      const result = await this.engine.setWindowFullscreen(enable);
+      this.fullscreen.set(result ? 'window' : 'off');
+    });
+  }
+
+  /** El vídeo pasa al hueco principal y lo ocupa todo, sobre la ventana a pantalla completa. */
+  protected enterVideoFullscreen(): Promise<void> {
+    return this.run(async () => {
+      this.slot.set('main');
+      if (await this.engine.setWindowFullscreen(true)) {
+        this.fullscreen.set('video');
+      }
+    });
+  }
+
+  protected exitFullscreen(): Promise<void> {
+    if (this.fullscreen() === 'off') {
+      return Promise.resolve();
+    }
+    return this.run(async () => {
+      await this.engine.setWindowFullscreen(false);
+      this.fullscreen.set('off');
+    });
+  }
+
+  protected toggleEngineFullscreen(): Promise<void> {
+    const enable = !this.engineFullscreen();
+    return this.run(async () => {
+      await this.engine.setEngineFullscreen(enable);
+      this.engineFullscreen.set(enable);
+    });
   }
 
   /** Comprueba qué ventana recibe la entrada en el centro del vídeo y de cada control superpuesto. */

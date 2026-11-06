@@ -1,13 +1,13 @@
 # Media Center — Hoja de ruta
 
 Estado del documento: planificación inicial, con la segunda revisión aplicada. El desarrollo ha empezado con la fase 1.  
-Última actualización: 2026-11-05.
+Última actualización: 2026-11-06.
 
 Cada tarea es un incremento pequeño. No se inicia una tarea hasta cerrar las decisiones de las que depende. El seguimiento vivo está en [PROGRESS.md](PROGRESS.md).
 
 Leyenda de estados: pendiente, bloqueada, en curso, hecha.
 
-Las tareas hechas de la fase 0 son documentación. F1.1 dejó una aplicación de escritorio vacía. F1.2 añadió un comando de prueba de Rust invocado desde la interfaz. F1.3 colocó el armazón visual de cuatro zonas sin datos reales. No hay funcionalidad de biblioteca, reproducción, importación ni descargas implementada.
+Las tareas hechas de la fase 0 son documentación. F1.1 dejó una aplicación de escritorio vacía. F1.2 añadió un comando de prueba de Rust invocado desde la interfaz. F1.3 colocó el armazón visual de cuatro zonas sin datos reales. F1.4 y F1.5 estudiaron la integración de libmpv en el diagnóstico de desarrollo y eligieron libmpv dentro del proceso (DC-17). No hay funcionalidad de biblioteca, reproducción, importación ni descargas implementada para la persona usuaria.
 
 ## Fase 0 — Cerrar la planificación
 
@@ -104,7 +104,7 @@ Objetivo: abrir una ventana de escritorio, comprobar el puente con Rust e incorp
 
 ### F1.5 Elegir y documentar la integración concreta
 
-- **Estado:** pendiente
+- **Estado:** hecha el 2026-11-06, tras la aprobación del usuario. DP-01 se cerró con la integración A, libmpv dentro del proceso (DC-17). B queda descartada como solución principal y se conserva por ahora en el diagnóstico de desarrollo. Las pruebas, el defecto aceptado y las limitaciones están en [PROGRESS.md](PROGRESS.md)
 - **Depende de:** F1.4
 - **Descripción:** Cerrar DP-01 con la opción que cumpla las condiciones ya escritas. Esta tarea ocurre antes de las funciones avanzadas del reproductor.
 - **Criterios de aceptación:**
@@ -335,17 +335,19 @@ Objetivo: agrupar fichas en un orden de reproducción.
 
 Objetivo: oír y ver con un solo controlador que sobrevive a la navegación, sobre la integración ya elegida.
 
-F1.4 y F1.5 se hacen al comienzo del desarrollo. Las tareas de esta fase completan el reproductor después de esa elección. No sustituyen a F1.4 ni piden otro proyecto.
+F1.4 y F1.5 se hicieron al comienzo del desarrollo y eligieron libmpv dentro del proceso (DC-17). Las tareas de esta fase completan el reproductor sobre esa elección. No sustituyen a F1.4 ni piden otro proyecto.
 
 ### F7.1 Reproducir el archivo principal
 
 - **Estado:** bloqueada
 - **Depende de:** F1.5, F3.2 y F1.2
 - **Descripción:** Abrir el archivo principal de una ficha con la integración ya documentada.
+- **Nota:** al empezar esta tarea se reorganiza el motor según «Organización del motor del producto» de [ARCHITECTURE.md](ARCHITECTURE.md), sobre la integración A (DC-17). La compilación del motor en release no implica aprobar la DLL para distribuirla: eso sigue en DP-20.
 - **Criterios de aceptación:**
   - Una canción de un formato que el motor admita se oye.
   - Un vídeo o una película de un formato admitido se ve y se oye.
   - Si el motor rechaza el formato, la ficha permanece y la interfaz explica que no puede reproducirse.
+  - **Obligatorio:** cuando se reproduce audio sin videoclip, la superficie nativa de vídeo queda oculta y se muestra la portada o el estado visual correspondiente, nunca un recuadro negro. Esto incluye los archivos de audio con portada incrustada, que mpv puede presentar como una pista de vídeo de imagen (`albumart`): esa imagen no cuenta como videoclip. En F1.5 la presencia de vídeo se detectó con `vid` y `vo-configured` en un MP3 sin portada; el caso con portada incrustada no se ha probado todavía.
 
 ### F7.2 Mantener una sola reproducción al navegar
 

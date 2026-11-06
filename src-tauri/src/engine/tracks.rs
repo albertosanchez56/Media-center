@@ -10,6 +10,7 @@ pub struct TrackInfo {
     pub external_filename: Option<String>,
     pub albumart: bool,
     pub title: Option<String>,
+    pub language: Option<String>,
     pub codec: Option<String>,
 }
 
@@ -31,10 +32,14 @@ pub struct PropertyReading {
     pub value: Option<String>,
 }
 
-/// Propiedades que muestran si el audio suena tras un salto (`audio-pts` falta mientras espera).
-const PLAYBACK_PROPERTIES: [&str; 10] = [
+/// Propiedades que muestran si el audio suena tras un salto (`audio-pts` falta mientras espera)
+/// y qué subtítulo se está dibujando (`sub-text`).
+const PLAYBACK_PROPERTIES: [&str; 14] = [
     "aid",
     "vid",
+    "sid",
+    "sub-text",
+    "fullscreen",
     "mute",
     "volume",
     "current-ao",
@@ -43,6 +48,7 @@ const PLAYBACK_PROPERTIES: [&str; 10] = [
     "core-idle",
     "seeking",
     "hr-seek",
+    "vo-configured",
 ];
 
 /// Lee `track-list` con un lector de propiedades en formato texto, común a los dos motores.
@@ -63,6 +69,7 @@ pub fn read_tracks(
             external_filename: field("external-filename")?,
             albumart: is_yes(field("albumart")?),
             title: field("title")?,
+            language: field("lang")?,
             codec: field("codec")?,
         });
     }
@@ -141,6 +148,22 @@ mod tests {
             Some("C:/videos/clip.mp4")
         );
         assert!(report.tracks[1].albumart);
+    }
+
+    #[test]
+    fn reads_the_language_of_each_track() {
+        let report = read_tracks(getter(&[
+            ("track-list/count", "2"),
+            ("track-list/0/type", "audio"),
+            ("track-list/0/lang", "spa"),
+            ("track-list/1/type", "sub"),
+            ("track-list/1/lang", "jpn"),
+            ("track-list/1/selected", "yes"),
+        ]))
+        .unwrap();
+        assert_eq!(report.tracks[0].language.as_deref(), Some("spa"));
+        assert_eq!(report.tracks[1].language.as_deref(), Some("jpn"));
+        assert!(report.tracks[1].selected);
     }
 
     #[test]

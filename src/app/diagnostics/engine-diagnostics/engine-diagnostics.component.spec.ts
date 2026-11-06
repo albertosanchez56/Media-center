@@ -5,6 +5,9 @@ import {
   EngineState,
   IDLE_ENGINE_STATE,
   OpenRequest,
+  TrackInfo,
+  TrackReport,
+  TrackSelection,
 } from '../../engine/engine.service';
 import { EngineDiagnosticsComponent } from './engine-diagnostics.component';
 
@@ -34,7 +37,42 @@ class EngineStub {
     this.calls.push('stop');
     this.state.set(IDLE_ENGINE_STATE);
   };
+  tracks = async () => TRACKS;
+  selectTrack = async (kind: TrackSelection, id: number | null) =>
+    void this.calls.push(`track:${kind}:${id}`);
+  addSubtitle = async (path: string) => void this.calls.push(`subtitle:${path}`);
+  setWindowFullscreen = async (enabled: boolean) => {
+    this.calls.push(`window-fullscreen:${enabled}`);
+    return enabled;
+  };
+  setEngineFullscreen = async (enabled: boolean) =>
+    void this.calls.push(`engine-fullscreen:${enabled}`);
 }
+
+function track(id: number, kind: string, selected: boolean, language: string): TrackInfo {
+  return {
+    id,
+    kind,
+    selected,
+    external: false,
+    externalFilename: null,
+    albumart: false,
+    title: null,
+    language,
+    codec: null,
+  };
+}
+
+const TRACKS: TrackReport = {
+  tracks: [
+    track(1, 'audio', true, 'spa'),
+    track(2, 'audio', false, 'eng'),
+    track(1, 'sub', false, 'jpn'),
+  ],
+  audioOnlyFromMainFile: true,
+  selectedExternalVideo: null,
+  playback: [],
+};
 
 describe('EngineDiagnosticsComponent', () => {
   let engine: EngineStub;
@@ -186,5 +224,91 @@ describe('EngineDiagnosticsComponent', () => {
     engine.state.set({ ...IDLE_ENGINE_STATE, kind: 'libmpv' });
     fixture.destroy();
     expect(engine.calls).toEqual(['stop']);
+  });
+
+  async function startPlayback(): Promise<void> {
+    engine.state.set({ ...IDLE_ENGINE_STATE, kind: 'libmpv' });
+    await fixture.whenStable();
+  }
+
+  const stage = () => element.querySelector('[aria-label="Área reservada para el vídeo"]');
+
+  it('should switch audio tracks and turn the subtitles off', async () => {
+    await startPlayback();
+    button('Leer pistas').click();
+    await fixture.whenStable();
+
+    expect(button('Mostrar subtítulo 1')).toBeTruthy();
+    expect(() => button('Usar audio 1')).toThrow();
+    button('Usar audio 2').click();
+    await fixture.whenStable();
+    button('Sin subtítulos').click();
+    await fixture.whenStable();
+
+    expect(engine.calls).toEqual(['track:audio:2', 'track:subtitle:null']);
+  });
+
+  it('should add an external subtitle without the copied quotes', async () => {
+    await startPlayback();
+    typeInto(2, '"C:\\pruebas\\externo.srt"');
+    await fixture.whenStable();
+
+    button('Añadir subtítulo').click();
+    await fixture.whenStable();
+
+    expect(engine.calls).toEqual(['subtitle:C:\\pruebas\\externo.srt']);
+  });
+
+  it('should put only the window in fullscreen without enlarging the video', async () => {
+    await startPlayback();
+    button('Ventana a pantalla completa').click();
+    await fixture.whenStable();
+
+    expect(engine.calls).toEqual(['window-fullscreen:true']);
+    expect(stage()?.classList).toContain('size-medium');
+    expect(button('Ventana a pantalla completa').getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it('should fill the screen with the video and leave it with Escape', async () => {
+    await startPlayback();
+    button('Vídeo a pantalla completa').click();
+    await fixture.whenStable();
+
+    expect(stage()?.classList).toContain('size-fullscreen');
+    expect(button('Salir de pantalla completa').parentElement?.hasAttribute('data-surface-hole')).toBe(true);
+
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    await fixture.whenStable();
+
+    expect(engine.calls).toEqual(['window-fullscreen:true', 'window-fullscreen:false']);
+    expect(stage()?.classList).toContain('size-medium');
+  });
+
+  it('should move the only video surface between the main slot and the mini player', async () => {
+    await startPlayback();
+    const surfaces = () => element.querySelectorAll('[aria-label="Área reservada para el vídeo"], .mini');
+
+    button('Minirreproductor').click();
+    await fixture.whenStable();
+    expect(element.querySelector('.mini')).not.toBeNull();
+    expect(stage()).toBeNull();
+    expect(element.querySelector('[aria-label="Hueco principal sin vídeo"]')).not.toBeNull();
+    expect(surfaces().length).toBe(1);
+
+    button('Hueco principal').click();
+    await fixture.whenStable();
+    expect(element.querySelector('.mini')).toBeNull();
+    expect(stage()).not.toBeNull();
+    expect(surfaces().length).toBe(1);
+    expect(engine.calls).toEqual([]);
+  });
+
+  it('should leave fullscreen when the view is closed', async () => {
+    await startPlayback();
+    button('Ventana a pantalla completa').click();
+    await fixture.whenStable();
+
+    fixture.destroy();
+    expect(engine.calls).toEqual(['window-fullscreen:true', 'window-fullscreen:false', 'stop']);
   });
 });

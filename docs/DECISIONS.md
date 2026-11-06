@@ -1,7 +1,7 @@
 # Media Center — Decisiones
 
 Estado del documento: registro vivo, con la segunda revisión aplicada.  
-Última actualización: 2026-11-04.
+Última actualización: 2026-11-06.
 
 Una decisión confirmada se respeta al implementar. Una decisión pendiente no se da por cerrada dentro del código ni de otros documentos. Si dos documentos discrepan, se anota aquí antes de implementar.
 
@@ -88,9 +88,9 @@ Estados: confirmada, pendiente, prevista, descartada.
 ### DC-11 libmpv es el motor previsto
 
 - **Fecha:** 2026-11-04
-- **Estado:** confirmada en la elección del motor; la integración concreta sigue abierta
+- **Estado:** confirmada. La integración concreta se eligió en F1.5 (DC-17)
 - **Decisión:** El motor multimedia previsto es libmpv.
-- **Consecuencias:** No se parte de otro reproductor como base. La forma de incrustarlo se estudia dentro de Media Center y se documenta en la tarea F1.5 antes de las funciones avanzadas. Hasta ese cierre, DP-01 sigue pendiente. No se mantiene abierta de forma indefinida ni se resuelve en un proyecto de pruebas aparte.
+- **Consecuencias:** No se parte de otro reproductor como base. La forma de incrustarlo se estudió dentro de Media Center en F1.4 y F1.5 y quedó fijada en DC-17.
 
 ### DC-12 Extracción de portadas incrustadas
 
@@ -127,13 +127,31 @@ Estados: confirmada, pendiente, prevista, descartada.
 - **Decisión:** Cuando se confirmen las reglas, la migración correspondiente solo creará tablas nuevas y sus vínculos con las fichas. No añadirá columnas de categoría o de colección a las tablas iniciales.
 - **Consecuencias:** DP-02 y DP-03 siguen pendientes. El boceto de tablas futuras de [DATABASE.md](DATABASE.md) no forma parte del esquema inicial ni está aprobado.
 
+### DC-17 libmpv se integra dentro del proceso de Media Center
+
+- **Fecha:** 2026-11-06
+- **Estado:** confirmada. Cierra DP-01 en la tarea F1.5
+- **Decisión:** Media Center usa la integración A: `libmpv-2.dll` cargada dentro de su propio proceso. mpv dibuja en una ventana hija Win32 propia (`VideoSurface`) colocada sobre el hueco que reserva la interfaz. La integración B, `mpv.exe` controlado por JSON IPC, queda descartada como solución principal.
+- **Justificación, con las pruebas de F1.4 y F1.5 descritas en [PROGRESS.md](PROGRESS.md):**
+  - Funcionalidad equivalente. A y B dieron los mismos resultados en reproducción, vídeo asociado en silencio, saltos, recorte, rueda, huecos, tamaños, traslado entre huecos, pantalla completa, subtítulos, pistas de audio, escalas, segundo monitor, errores y cierre.
+  - Arquitectura más sencilla. A solo necesita la DLL y un hilo de eventos. B necesita además un proceso aparte, una tubería con nombre por sesión, dos conexiones JSON IPC y la terminación del proceso.
+  - Menor consumo en las pruebas realizadas. Con el mismo vídeo, A usó unos 55 MB menos de memoria de trabajo y algo menos de CPU. Son medidas orientativas de un solo equipo y de una compilación de desarrollo.
+  - Compilación LGPL verificada. La DLL de desarrollo es la compilación LGPL publicada en mpv v0.42.0 (mpv con `gpl=false` y FFmpeg LGPL), con SHA-256 y firma comprobados. El `mpv.exe` oficial que usa B es GPL.
+- **Riesgo aceptado:** un fallo grave de libmpv cierra Media Center entero. B lo habría aislado en otro proceso.
+- **Consecuencias:**
+  - El reproductor del producto se construye sobre A, con la organización descrita en [ARCHITECTURE.md](ARCHITECTURE.md). La reorganización del código empieza en F7.1.
+  - B y el diagnóstico experimental se conservan por ahora en la compilación de desarrollo, como alternativa y como herramienta de medida. Retirarlos será una decisión posterior.
+  - La DLL usada en desarrollo no queda aprobada para distribuirse. Su procedencia, sus obligaciones de licencia y su empaquetado siguen pendientes en DP-20.
+  - Pendiente aceptado en F1.5: con audio sin vídeo, la superficie se muestra como un recuadro negro. La presencia de vídeo se detecta (`vid` y `vo-configured`), y F7.1 tiene como criterio obligatorio ocultar la superficie en ese caso.
+  - Siguen las limitaciones medidas de la superficie nativa: recorte con regiones, pequeño retraso respecto al HTML, rueda con paso fijo, huecos obligatorios para los controles superpuestos, cambios de hueco muy rápidos sin descartar, y el desajuste de escala al mover la ventana por programa entre monitores con escalas distintas.
+
 ## Decisiones pendientes
 
 ### DP-01 Integración concreta de libmpv
 
 - **Fecha:** 2026-11-04
-- **Estado:** pendiente. Debe cerrarse en F1.5, antes de las funciones avanzadas del reproductor
-- **Bloquea:** F7.4, F7.6, F8.2 y F8.3. No bloquea el esqueleto ni el estudio temprano F1.4
+- **Estado:** cerrada el 2026-11-06 en F1.5, con la aprobación del usuario. La opción elegida es A y queda recogida en DC-17. La entrada se conserva aquí con su historial
+- **Bloqueaba:** F7.4, F7.6, F8.2 y F8.3. Ya no las bloquea; siguen dependiendo de sus otras tareas y decisiones
 - **Qué hay que elegir:** Cómo se une libmpv a la ventana de Tauri 2.
 - **Opciones a examinar, sin preferencia cerrada:**
   - Renderizar libmpv en una superficie nativa coordinada con la ventana.
@@ -157,6 +175,15 @@ Estados: confirmada, pendiente, prevista, descartada.
   - Al cerrar Media Center con una reproducción activa, ninguna de las dos deja procesos propios ni tuberías.
   - **Candidata provisional: A**, desde el 2026-11-06. **B queda documentada como alternativa.** No es una elección: DP-01 sigue pendiente hasta F1.5. F1.4 está hecha y el código de las dos integraciones se conserva en el diagnóstico de desarrollo para F1.5.
   - Pendiente de comprobar para cerrar DP-01: subtítulos, pistas de audio, pantalla completa, varios monitores y otras escalas. Las pruebas y sus dependencias están en [PROGRESS.md](PROGRESS.md), en «Pruebas pendientes para las funciones avanzadas».
+- **Observaciones de F1.5 (2026-11-06):** Las pruebas están en [PROGRESS.md](PROGRESS.md), en la sección de F1.5. A y B volvieron a comportarse igual:
+  - Subtítulos incrustados y externos (`.srt` y `.ass`), con acentos y alfabetos no latinos, se activan, se cambian y se desactivan sin reiniciar. Se dibujan dentro de la superficie y respetan el recorte y los huecos.
+  - La pista de audio cambia sin reiniciar ni perder la posición. Con vídeo asociado solo suena el archivo principal.
+  - La propiedad `fullscreen` de mpv no tiene efecto con `--wid`. La pantalla completa se consigue con la ventana de Tauri y la superficie ocupando el monitor, sin reiniciar, y se sale con Esc o con un botón HTML recortado como hueco.
+  - La misma superficie pasa de un hueco a otro en los dos sentidos, con una sola sesión, sin reiniciar y conservando la posición y la pausa. El hueco anterior queda libre.
+  - Escalas del 125 % y 150 % y un segundo monitor con otra escala: la superficie coincide con su hueco.
+  - Con audio solo, la superficie aparece como un recuadro negro en las dos. Se evita mostrándola solo cuando `vo-configured` es verdadero.
+  - Rendimiento orientativo: A gasta algo menos de CPU y unos 55 MB menos de memoria que B con su `mpv.exe`.
+  - **Resolución:** el usuario aprobó el 2026-11-06 la recomendación de elegir A. B queda descartada como integración principal y se conserva por ahora en el diagnóstico de desarrollo. Decisión y justificación en DC-17.
 
 ### DP-02 Reglas de las categorías personalizadas
 
@@ -273,7 +300,7 @@ Estados: confirmada, pendiente, prevista, descartada.
 - **Fecha:** 2026-11-04
 - **Estado:** pendiente
 - **Qué hay que elegir:** Si los subtítulos salen solo de pistas incrustadas, también de archivos externos, o de ambas fuentes.
-- **Consecuencias de dejarla abierta:** La interfaz de reproducción reserva la selección de subtítulos. El origen concreto llega con la integración elegida en F1.5.
+- **Consecuencias de dejarla abierta:** La interfaz de reproducción reserva la selección de subtítulos. F1.5 comprobó con la integración elegida que las dos fuentes son técnicamente viables: pistas incrustadas y archivos `.srt` y `.ass` externos. La elección del origen sigue siendo de la persona responsable del producto.
 
 ### DP-15 Convivencia de la barra musical y el minirreproductor
 
@@ -322,6 +349,7 @@ Estados: confirmada, pendiente, prevista, descartada.
 - **Bloquea:** el detalle de F12.3 y F12.4
 - **Qué hay que elegir:** Si libmpv, FFmpeg y yt-dlp se incluyen en el instalador o se documentan como requisitos externos. La herramienta de etiquetas entra en la misma decisión cuando DP-10 la elija.
 - **Consecuencias de dejarla abierta:** Las licencias se inventariarán cuando existan las dependencias. La guía de instalación no puede afirmar todavía si esas herramientas viajan dentro del paquete.
+- **Nota tras F1.5 (2026-11-06):** DC-17 elige libmpv dentro del proceso, pero la `libmpv-2.dll` usada en desarrollo no queda aprobada para distribuirse. Antes de incluir cualquier DLL en el instalador hay que verificar su procedencia y su compilación, las obligaciones de la LGPL (avisos, textos de licencia, código fuente o instrucciones para obtenerlo y posibilidad de sustituir la DLL) y las licencias de sus componentes. Los mantenedores de mpv recomiendan compilarla uno mismo para distribuirla. DP-20 sigue pendiente.
 
 ## Relación entre requisitos que pueden parecer incompatibles
 
@@ -336,7 +364,7 @@ Estas lecturas mantienen los requisitos confirmados sin cerrar las decisiones pe
 | Portada incrustada e imagen personalizada | DC-12 guarda las dos. La personalizada es la que se muestra cuando está seleccionada. La extraída permanece |
 | Movimiento directo y no borrar el original con incertidumbre | El movimiento directo en el mismo volumen es un renombrado recuperable porque el diario existe antes. Entre volúmenes, el original solo se elimina tras verificar la copia y confirmar el alta. En `needs_review` no hay borrado automático |
 | Sin servidores en la primera versión y streaming móvil en el futuro | El streaming pertenece a una ampliación posterior. El instalador de Windows no añade un servidor |
-| libmpv elegido e integración sin definir | El motor está elegido. La técnica se elige en F1.5, al comienzo del desarrollo y antes de las funciones avanzadas. Hoy DP-01 sigue pendiente porque el desarrollo no ha empezado |
+| libmpv elegido e integración que se elige después | El motor se eligió en DC-11 y la integración en F1.5, antes de las funciones avanzadas: libmpv dentro del proceso (DC-17) |
 
 ## Propuesta aceptada
 

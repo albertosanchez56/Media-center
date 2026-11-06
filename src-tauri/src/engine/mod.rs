@@ -39,6 +39,14 @@ pub struct OpenRequest {
     pub d3d11_flip: bool,
 }
 
+/// Pistas que se eligen desde el diagnóstico; el vídeo lo decide el vídeo asociado.
+#[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub enum TrackSelection {
+    Audio,
+    Subtitle,
+}
+
 struct Session {
     backend: Box<dyn EngineBackend>,
     shared: Arc<Shared>,
@@ -137,6 +145,23 @@ impl EngineManager {
         self.command(&args)
     }
 
+    /// `None` desactiva la pista: sin subtítulos o sin audio.
+    pub fn select_track(&self, kind: TrackSelection, id: Option<i64>) -> Result<(), String> {
+        let command = track_command(kind, id)?;
+        let args: Vec<&str> = command.iter().map(String::as_str).collect();
+        self.command(&args)
+    }
+
+    pub fn add_subtitle(&self, path: &str) -> Result<(), String> {
+        require_file(path)?;
+        self.command(&["sub-add", path, "select"])
+    }
+
+    /// Propiedad `fullscreen` de mpv; con `--wid` se prueba si tiene algún efecto.
+    pub fn set_engine_fullscreen(&self, enabled: bool) -> Result<(), String> {
+        self.command(&["set", "fullscreen", if enabled { "yes" } else { "no" }])
+    }
+
     pub fn status(&self) -> EngineState {
         lock(&self.session)
             .as_ref()
@@ -223,6 +248,19 @@ fn seek_command(seconds: f64) -> Result<[String; 3], String> {
     ])
 }
 
+fn track_command(kind: TrackSelection, id: Option<i64>) -> Result<[String; 3], String> {
+    let property = match kind {
+        TrackSelection::Audio => "aid",
+        TrackSelection::Subtitle => "sid",
+    };
+    let value = match id {
+        Some(id) if id >= 1 => id.to_string(),
+        Some(_) => return Err("Número de pista no válido".to_string()),
+        None => "no".to_string(),
+    };
+    Ok(["set".to_string(), property.to_string(), value])
+}
+
 fn require_file(path: &str) -> Result<(), String> {
     if Path::new(path).is_file() {
         Ok(())
@@ -248,5 +286,37 @@ mod tests {
     fn rejects_non_finite_seeks() {
         assert!(seek_command(f64::NAN).is_err());
         assert!(seek_command(f64::INFINITY).is_err());
+    }
+
+    #[test]
+    fn selects_audio_and_subtitle_tracks_by_id() {
+        assert_eq!(
+            track_command(TrackSelection::Audio, Some(2)).unwrap(),
+            ["set", "aid", "2"]
+        );
+        assert_eq!(
+            track_command(TrackSelection::Subtitle, Some(1)).unwrap(),
+            ["set", "sid", "1"]
+        );
+    }
+
+    #[test]
+    fn no_track_turns_the_subtitles_off() {
+        assert_eq!(
+            track_command(TrackSelection::Subtitle, None).unwrap(),
+            ["set", "sid", "no"]
+        );
+    }
+
+    #[test]
+    fn rejects_track_ids_below_one() {
+        assert!(track_command(TrackSelection::Audio, Some(0)).is_err());
+        assert!(track_command(TrackSelection::Subtitle, Some(-3)).is_err());
+    }
+
+    #[test]
+    fn missing_files_are_reported_with_their_path() {
+        let error = require_file("C:/no/existe.srt").unwrap_err();
+        assert_eq!(error, "No existe el archivo: C:/no/existe.srt");
     }
 }

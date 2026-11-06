@@ -1,7 +1,7 @@
 # Media Center — Requisitos
 
 Estado del documento: planificación inicial, con la segunda revisión aplicada.  
-Última actualización: 2026-11-04.
+Última actualización: 2026-11-06.
 
 Los términos de producto están definidos en [PROJECT.md](PROJECT.md). Cada requisito lleva uno de estos estados:
 
@@ -47,23 +47,23 @@ Importar crea la ficha en la biblioteca elegida. Crear otra ficha para el mismo 
 
 | ID | Requisito | Estado |
 | --- | --- | --- |
-| R-01 | Se reproducen música y vídeo en los formatos que admita el motor integrado | Confirmado. El motor previsto es libmpv. La integración concreta sigue pendiente y debe elegirse al comienzo del desarrollo, antes de las funciones avanzadas |
+| R-01 | Se reproducen música y vídeo en los formatos que admita el motor integrado | Confirmado. El motor es libmpv, integrado dentro del proceso de Media Center (DC-17, elegido en F1.5). La reproducción del producto no está implementada: llega con F7.1 |
 | R-02 | Solo hay una reproducción activa a la vez | Confirmado |
 | R-03 | La reproducción continúa al cambiar de sección | Confirmado |
 | R-04 | La música usa un reproductor inferior de estilo similar a Spotify, con diseño propio | Confirmado |
 | R-05 | Un panel derecho muestra la portada o el vídeo de la canción | Confirmado |
 | R-06 | Una canción MP4 muestra su videoclip en el panel derecho | Confirmado |
-| R-07 | El vídeo puede ampliarse y minimizarse sin reiniciar la reproducción | Confirmado. El destino visual de la vista ampliada se definirá con la interfaz. Es una función avanzada y espera la integración elegida |
+| R-07 | El vídeo puede ampliarse y minimizarse sin reiniciar la reproducción | Confirmado. El destino visual de la vista ampliada se definirá con la interfaz. Es una función avanzada, sin implementar. F1.5 comprobó su viabilidad en el diagnóstico: la misma superficie cambia de hueco sin reiniciar |
 | R-08 | Películas y vídeos pasan a un minirreproductor al cambiar de sección | Confirmado. La colocación del minirreproductor está pendiente de diseño |
 | R-09 | Una película se reanuda automáticamente en la posición anterior | Confirmado |
-| R-10 | Hay subtítulos, selección de pistas de audio, pantalla completa y controles de reproducción | Confirmado. El origen de los subtítulos (incrustados, archivo externo o ambos) está pendiente |
+| R-10 | Hay subtítulos, selección de pistas de audio, pantalla completa y controles de reproducción | Confirmado. El origen de los subtítulos (incrustados, archivo externo o ambos) está pendiente (DP-14). Sin implementar en el producto. F1.5 comprobó en el diagnóstico que son viables las dos fuentes de subtítulos, el cambio de pista de audio y la pantalla completa |
 | R-11 | Hay cola de reproducción, reproducción aleatoria y modos de repetición | Confirmado. Qué modos de repetición se ofrecen y si la cola se guarda entre sesiones está pendiente |
 
 La reanudación automática está confirmada para películas. Guardar la posición de vídeos o de canciones es una decisión pendiente.
 
 Una canción con vídeo asociado sigue contando como una sola reproducción: el audio es el de la canción y el vídeo es la imagen que la acompaña. El detalle está en la sección 3. Esa sincronización es una función avanzada del reproductor.
 
-El trabajo de libmpv se hace dentro de Media Center. No se pide un proyecto de pruebas independiente. La decisión de la integración no queda abierta de forma indefinida: se documenta antes de construir las funciones avanzadas.
+El trabajo de libmpv se hace dentro de Media Center. No se pide un proyecto de pruebas independiente. La integración se eligió en F1.5, antes de construir las funciones avanzadas: libmpv dentro del proceso (DC-17).
 
 ## 3. Personalización visual de canciones
 
@@ -78,7 +78,7 @@ El trabajo de libmpv se hace dentro de Media Center. No se pide un proyecto de p
 | V-07 | El vídeo asociado se reproduce sin su propio sonido | Confirmado |
 | V-08 | El vídeo asociado sigue los controles de la canción, incluidos pausa, reanudación y cambio de posición | Confirmado |
 | V-09 | Si el vídeo asociado dura menos que la canción, se contempla reproducirlo en bucle | Pendiente. Está contemplado y todavía no está elegido |
-| V-10 | La sincronización y el renderizado se harán con la integración de libmpv que se documente antes de esta función | Pendiente de esa elección. La función es avanzada |
+| V-10 | La sincronización y el renderizado se harán con la integración de libmpv que se documente antes de esta función | Confirmado: libmpv dentro del proceso (DC-17), con el vídeo asociado añadido a la misma sesión y saltos exactos. Viabilidad comprobada en F1.4 y F1.5. La función es avanzada y no está implementada: llega con F8.2 |
 
 Las imágenes y los metadatos personalizados pertenecen a la ficha. Dos fichas asociadas al mismo archivo físico, si B-11 llega a confirmarse, pueden mostrar portadas distintas.
 

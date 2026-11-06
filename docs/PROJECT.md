@@ -1,7 +1,7 @@
 # Media Center — Visión del proyecto
 
 Estado del documento: planificación inicial, con la segunda revisión aplicada.  
-Última actualización: 2026-11-04.
+Última actualización: 2026-11-06.
 
 Este documento describe qué es Media Center, a quién se dirige la primera versión y qué queda fuera de ella. Los requisitos detallados están en [REQUIREMENTS.md](REQUIREMENTS.md). Las decisiones cerradas y las que siguen abiertas están en [DECISIONS.md](DECISIONS.md).
 
@@ -36,7 +36,6 @@ Forman parte de la dirección del producto, con el detalle todavía abierto:
 - Categorías personalizadas.
 - Colecciones, como concepto distinto de las playlists.
 - Escritura opcional de etiquetas dentro de archivos compatibles.
-- La integración concreta de libmpv. El trabajo empieza al comienzo del desarrollo, dentro de esta aplicación, y la opción se documenta antes de las funciones avanzadas del reproductor.
 - Usar un mismo archivo físico en varias bibliotecas. El modelo de datos lo puede expresar; la función todavía no está confirmada.
 
 El diseño visual concreto se definirá por etapas. La estructura general de la ventana sí está descrita en los requisitos: menú lateral, zona central, panel derecho de reproducción musical y controles globales.
@@ -73,7 +72,7 @@ Una aplicación móvil con streaming necesitaría un punto de conexión en el or
 | Angular y TypeScript | Interfaz | Elegida |
 | Tauri 2 y Rust | Aplicación de escritorio, archivos, procesos y persistencia | Elegida |
 | SQLite | Biblioteca y metadatos | Elegida. El esquema concreto sigue pendiente de aprobación |
-| libmpv | Motor multimedia | Previsto. La integración concreta se elige al comienzo del desarrollo, antes de las funciones avanzadas, y hoy sigue pendiente |
+| libmpv | Motor multimedia | Elegido e integrado dentro del proceso de la aplicación (DC-17, F1.5). Falta decidir cómo viaja en el instalador |
 | yt-dlp y FFmpeg | Descargas autorizadas | Elegidos como herramientas. Falta decidir si viajan dentro del instalador |
 | Lector y editor de etiquetas | Leer metadatos y portadas y, de forma opcional, escribir etiquetas | La extracción de portadas está confirmada. La herramienta concreta sigue pendiente |
 

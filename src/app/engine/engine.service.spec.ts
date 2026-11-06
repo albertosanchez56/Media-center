@@ -100,6 +100,28 @@ describe('EngineService', () => {
     expect(turns).toEqual([{ delta: -120, horizontal: false }]);
   });
 
+  it('should send track, subtitle and fullscreen requests', async () => {
+    const calls: [string, unknown][] = [];
+    mockIPC((cmd, args) => {
+      calls.push([cmd, args]);
+      return cmd === 'engine_set_window_fullscreen' ? true : undefined;
+    });
+
+    await service.selectTrack('audio', 2);
+    await service.selectTrack('subtitle', null);
+    await service.addSubtitle('C:\\pruebas\\externo.srt');
+    expect(await service.setWindowFullscreen(true)).toBe(true);
+    await service.setEngineFullscreen(false);
+
+    expect(calls).toEqual([
+      ['engine_select_track', { kind: 'audio', id: 2 }],
+      ['engine_select_track', { kind: 'subtitle', id: null }],
+      ['engine_add_subtitle', { path: 'C:\\pruebas\\externo.srt' }],
+      ['engine_set_window_fullscreen', { enabled: true }],
+      ['engine_set_engine_fullscreen', { enabled: false }],
+    ]);
+  });
+
   it('should reject connect when Tauri is not available', async () => {
     await expect(service.connect()).rejects.toThrow();
   });

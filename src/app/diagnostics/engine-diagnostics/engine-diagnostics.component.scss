@@ -111,6 +111,41 @@ button {
     aspect-ratio: auto;
     border: 0;
   }
+
+  // Sobre la ventana a pantalla completa, el vídeo cubre también la franja de controles.
+  &.size-fullscreen {
+    position: fixed;
+    inset: 0;
+    z-index: 3;
+    width: auto;
+    max-width: none;
+    aspect-ratio: auto;
+    border: 0;
+  }
+
+  &.placeholder {
+    display: grid;
+    place-items: center;
+    background-color: var(--color-surface-raised);
+    color: var(--color-text-muted);
+  }
+}
+
+.mini {
+  position: fixed;
+  right: var(--space-4);
+  bottom: calc(var(--player-height) + var(--space-4));
+  z-index: 2;
+  width: 320px;
+  aspect-ratio: 16 / 9;
+  border: 1px solid var(--color-border);
+  background-color: #000;
+}
+
+.exit-fullscreen {
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-3);
 }
 
 .overlay {

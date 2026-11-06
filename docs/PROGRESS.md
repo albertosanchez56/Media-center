@@ -5,9 +5,11 @@ Estado del documento: vivo. Se actualiza al cerrar trabajo de planificación o d
 
 ## Estado general
 
-El desarrollo **ha empezado**. Las tareas F1.1 a F1.4 están hechas. Con F1.1 a F1.3, Media Center abre como aplicación de escritorio de Windows, muestra el armazón visual de cuatro zonas sin datos reales y, en desarrollo, ofrece una sección de diagnóstico que llama a un comando de prueba de Rust.
+El desarrollo **ha empezado**. La fase 1, de F1.1 a F1.5, está hecha. Con F1.1 a F1.3, Media Center abre como aplicación de escritorio de Windows, muestra el armazón visual de cuatro zonas sin datos reales y, en desarrollo, ofrece una sección de diagnóstico que llama a un comando de prueba de Rust.
 
-F1.4 está **hecha**: las dos integraciones experimentales de mpv (A, libmpv dentro del proceso, y B, `mpv.exe` controlado por IPC) reproducen archivos locales dentro de la ventana y se han verificado en la aplicación. Solo existen en la compilación de desarrollo, dentro de «Diagnóstico», y se conservan para F1.5. A es la candidata provisional y B la alternativa documentada. DP-01 sigue pendiente.
+F1.4 está **hecha**: las dos integraciones experimentales de mpv (A, libmpv dentro del proceso, y B, `mpv.exe` controlado por IPC) reproducen archivos locales dentro de la ventana y se han verificado en la aplicación. Solo existen en la compilación de desarrollo, dentro de «Diagnóstico».
+
+F1.5 está **hecha**. Con las pruebas de viabilidad en A y en B, el usuario aprobó el 2026-11-06 la integración A, libmpv dentro del proceso: DP-01 queda cerrada en DC-17. B se descarta como solución principal y se conserva por ahora en el diagnóstico de desarrollo. El reproductor del producto no se ha empezado.
 
 No hay funcionalidad de producto. No existen biblioteca, importación, reproducción para la persona usuaria, descargas ni base de datos. No se han instalado SQLite, yt-dlp ni FFmpeg como herramientas. libmpv y mpv.exe solo están en una carpeta local ignorada por Git. El esquema de [DATABASE.md](DATABASE.md) sigue pendiente de aprobación y no se ha creado ninguna migración.
 
@@ -283,15 +285,134 @@ No se ha implementado nada de esto. La lista recoge lo que habrá que comprobar 
 | DP-01 sigue sin cerrarse | Cumplido: A es solo candidata provisional |
 | No existe un proyecto de pruebas independiente para el reproductor | Cumplido: todo vive en la aplicación. Los scripts de medición y los medios sintéticos son temporales y están fuera del repositorio |
 
+## F1.5 Elegir y documentar la integración concreta
+
+Hecha el 2026-11-06, tras la revisión y aprobación de sus resultados. **DP-01 está cerrada:** la integración elegida es A, libmpv dentro del proceso (DC-17). B queda descartada como solución principal y se conserva por ahora, junto con el resto del diagnóstico experimental. No se ha empezado F7.1 ni el reproductor del producto.
+
+### Cambios en el diagnóstico de desarrollo
+
+Todo sigue compilándose solo con `debug_assertions` en Windows. No hay dependencias nuevas.
+
+- Rust:
+  - `engine/mod.rs`: `select_track` (`set aid` o `set sid` con un número desde 1, o `no` para desactivar), `add_subtitle` (`sub-add <ruta> select`, con la misma comprobación de archivo que «Abrir») y `set_engine_fullscreen` (propiedad `fullscreen` de mpv, solo para medir su efecto).
+  - `engine/commands.rs` y `lib.rs`: comandos `engine_select_track`, `engine_add_subtitle`, `engine_set_engine_fullscreen` y `engine_set_window_fullscreen`. Este último pone a pantalla completa la ventana de Tauri con `WebviewWindow::set_fullscreen` y devuelve el estado que queda. `capabilities` no cambia.
+  - `engine/tracks.rs`: idioma de cada pista (`lang`) y dos lecturas más del estado: `fullscreen` y `vo-configured`.
+- Angular, solo en el diagnóstico:
+  - `EngineService`: `selectTrack`, `addSubtitle`, `setWindowFullscreen` y `setEngineFullscreen`.
+  - `EngineDiagnosticsComponent`:
+    - Campo «Subtítulo externo», botones «Añadir subtítulo» y «Sin subtítulos», y en la tabla de pistas una columna de idioma y botones «Usar audio n» y «Mostrar subtítulo n».
+    - Dos modos de pantalla completa distintos. «Ventana a pantalla completa» solo agranda la ventana de Tauri y el vídeo conserva el tamaño de su recuadro. «Vídeo a pantalla completa» agranda la ventana y además el recuadro ocupa todo el monitor, con un botón «Salir de pantalla completa» recortado como hueco. Esc sale de los dos. Al cerrar la vista se sale de la pantalla completa antes de detener.
+    - Botón «Propiedad fullscreen de mpv», solo para la medida.
+    - «Hueco del vídeo»: «Hueco principal» o «Minirreproductor», un recuadro fijo de 320 × 180 px en la esquina inferior derecha. En cada momento solo uno de los dos lleva la directiva `appVideoSurface`; el otro muestra un texto.
+
+No es la experiencia definitiva de F7.6: es la prueba técnica de que las dos pantallas completas son posibles sin reiniciar.
+
+### Comprobaciones automáticas
+
+| Comprobación | Resultado |
+| --- | --- |
+| `npm run build` | Correcta |
+| `npm test -- --watch=false` | 60 de 60 pruebas en 11 archivos |
+| `cargo fmt --check` | Correcta |
+| `cargo check` y `cargo check --release` | Correctas |
+| `cargo test` | 31 de 31 pruebas |
+
+Pruebas nuevas: órdenes de pista (audio, subtítulo, desactivar y rechazo de números menores que 1), ruta inexistente en el mensaje de error, idioma de las pistas, las cuatro peticiones del servicio, y en el componente el cambio de pista, el subtítulo externo sin comillas, la pantalla completa solo de la ventana, la del vídeo con salida por Esc, el traslado de la única superficie entre los dos huecos y la salida de la pantalla completa al cerrar la vista.
+
+Restricción de las pruebas de Rust: una prueba unitaria no puede crear `EngineManager` ni nada que enlace el código de ventanas de Tauri o el `Drop` de `VideoSurface`. Si lo hace, el ejecutable de pruebas no llega a arrancar y Windows devuelve `0xc0000139` (`STATUS_ENTRYPOINT_NOT_FOUND`). Las pruebas tienen que usar funciones puras, como `track_command` o `require_file`. Habrá que tenerlo en cuenta al reorganizar el motor en F7.1.
+
+### Verificación manual
+
+Se hizo el 2026-11-06 en una instancia propia de `npm run tauri:dev`. La interfaz se manejó con UI Automation y la rueda, los clics y Esc con eventos reales de Win32. Las comprobaciones visuales se hicieron con capturas y las de ventanas con `WindowFromPoint`. Los dos `mpv.exe` de origen desconocido que ya había en el equipo no se tocaron. Al terminar, la instancia se cerró con código 0 y no quedó ningún `mpv.exe` propio.
+
+Medios sintéticos, generados con el FFmpeg del sistema en `%TEMP%\mc-f15`, fuera del repositorio. No se usó ningún archivo personal.
+
+- `pistas.mkv`, de 90 s: vídeo de prueba en H.264 1280×720, dos pistas de audio («Español 440 Hz», `spa`, y «English 880 Hz», `eng`) y dos subtítulos incrustados («Español SRT», `spa`, con acentos y signos de apertura, y «Multialfabeto ASS», `jpn`, con japonés, cirílico y griego).
+- `externo.srt` (acentos y chino) y `externo.ass` (coreano, árabe y «Ñandú», dibujado arriba en otro color).
+- Cada subtítulo tiene una línea numerada cada 2 s durante todo el archivo. Una primera versión con una sola línea larga no servía: al activar la pista a mitad de la línea, mpv no tiene ningún paquete nuevo que dibujar.
+
+| Prueba | A, libmpv | B, mpv.exe |
+| --- | --- | --- |
+| 1. Subtítulos externos `.srt` y `.ass` | Se añaden como pistas 3 y 4, quedan activos y `sub-text` muestra el texto exacto. Se dibujan dentro de la superficie, el ASS con su posición y su color. «Sin subtítulos» deja `sid=no` y no queda texto | Igual |
+| 1. Recorte y huecos | Con el ASS arriba, los controles HTML con huecos tapan el subtítulo, y la barra inferior también lo recorta | Igual |
+| 2. Subtítulos incrustados | Las dos pistas se activan y se cambian. Acentos, japonés, cirílico y griego correctos en `sub-text` y en pantalla | Igual |
+| 2. Pista de audio | `aid` pasa de 1 a 2 sin reiniciar: «cargados» en 1/1 y la posición sigue avanzando | Igual, con el mismo proceso de mpv |
+| 2. Vídeo asociado con varias pistas | Con el MP3 como principal y `pistas.mkv` como vídeo asociado, solo está activo el audio del MP3 (`aid` 1). Las pistas del MKV aparecen como externas e inactivas | Igual |
+| 3. Ventana a pantalla completa | La ventana ocupa el monitor (2560×1440) y el vídeo conserva el tamaño de su recuadro | Igual |
+| 3. Vídeo a pantalla completa | La superficie ocupa todo el monitor. El botón de salida es un hueco: en su centro está WebView2 y no el vídeo. Se conservan la posición, la pausa y «cargados» en 1/1 | Igual, con el mismo proceso de mpv |
+| 3. Salida | Esc y el botón devuelven la ventana a 1280×800 en su sitio, sin reiniciar y conservando la pausa | Igual |
+| 3. Propiedad `fullscreen` de mpv con `--wid` | Pasa a `yes`, pero no tiene ningún efecto visible: la ventana y la superficie no cambian | Igual |
+| 4. Traslado entre huecos | Una sola ventana de vídeo en todo momento. Sin reinicio («cargados» en 1/1). Se conservan la posición y la pausa (10,6 s en pausa antes y después). El centro del hueco anterior da WebView2 y en la captura solo se ve su texto. Funciona en los dos sentidos | Igual, con el mismo proceso de mpv |
+| 4. Cambios rápidos | 21 cambios seguidos, con unos 120 ms entre clics: la superficie acaba en el hueco correcto | Igual |
+| 5. MP3 sin vídeo | **Muestra un recuadro negro** si el hueco está a la vista: la superficie se muestra siempre que hay una sesión. `vid=no` y `vo-configured=no`, frente a `vid=1` y `vo-configured=yes` con vídeo | Igual |
+| 6. Escala del 125 % | Recuadro, minirreproductor (400×225) y pantalla completa coinciden con la superficie en los cuatro bordes | Igual |
+| 6. Escala del 150 % | Igual (minirreproductor de 480×270). La superficie a pantalla completa mide 2561 px de ancho por redondeo y la ventana recorta el píxel sobrante | Igual |
+| 6. Segundo monitor con escala distinta | Monitor principal al 150 % y secundario de 1920×1080 al 100 %, con la ventana arrastrada a mano: minirreproductor de 320×180 sobre la superficie, pantalla completa de vídeo de 1920×1080 exactos y vuelta sin cambiar de tamaño ni reiniciar | Igual, con el mismo proceso de mpv |
+
+Las escalas las cambió el usuario a petición y las restauró al 100 % al terminar. La ventana la movió también el usuario. La configuración de pantalla no se tocó desde los scripts.
+
+Rendimiento, con el mismo `pistas.mkv`, el recuadro mediano a la vista, 5 s de calentamiento y 60 s de medida. Dos rondas, en orden inverso. Son cifras orientativas: es una compilación de desarrollo, en un solo equipo, y no incluyen los procesos de WebView2, que son los mismos en las dos.
+
+| Integración | Procesos medidos | CPU (de un núcleo) | Memoria de trabajo | Memoria privada |
+| --- | --- | --- | --- | --- |
+| A | Media Center | 3,3 % y 3,4 % | 154 y 155 MB | 170 y 172 MB |
+| B | Media Center y su `mpv.exe` | 4,2 % y 4,1 % | 211 y 211 MB | 200 y 201 MB |
+
+Observaciones de la medición:
+
+- El recuadro negro con audio solo es común a A y B y no depende de la integración. No se ha corregido en el diagnóstico. Ver «Defecto aceptado» más abajo.
+- Al volver de la pantalla completa, la página del diagnóstico queda desplazada al principio: con la ventana grande no había desplazamiento posible y no se recupera. El reproductor de F7 tendrá que conservar la posición de la vista.
+- Mover la ventana por programa (`SetWindowPos`) entre monitores con escalas distintas desajustó la escala de la página: el contenido se dibujaba al 150 % en el monitor del 100 %, la pantalla completa ocupaba 2880×1620 y la ventana encogía 1,5 veces al salir. Ocurre también sin ninguna reproducción, así que no depende de mpv. Con la ventana arrastrada a mano no ocurre. Si F7 o una tarea posterior restaura por programa la posición de la ventana, habrá que repetir esta prueba.
+- El informe de ventanas sigue contando la «ventana suelta» `Tao Thread Event Target` de F1.4.
+
+### Defecto aceptado: recuadro negro con audio sin vídeo
+
+La prueba 5 **falló** en A y en B. Con un MP3 sin vídeo, la superficie nativa se muestra como un recuadro negro en cuanto su hueco queda a la vista, porque hoy se muestra siempre que hay una sesión abierta. El usuario aceptó el 2026-11-06 dejarlo pendiente, porque la presencia de vídeo sí se detecta: `vid=no` y `vo-configured=no` con el MP3, frente a `vid=1` y `vo-configured=yes` con vídeo, en las dos integraciones.
+
+F7.1 tiene un criterio de aceptación obligatorio para corregirlo: con audio sin videoclip, la superficie se oculta y se muestra la portada o el estado visual correspondiente. Las portadas incrustadas necesitan cuidado: mpv puede presentarlas como una pista de vídeo de imagen (`albumart`), y entonces `vo-configured` podría indicar que hay vídeo. El MP3 de la prueba no tenía portada, así que ese caso **no se ha probado**.
+
+### Riesgos y limitaciones que siguen abiertos
+
+- Un fallo grave de libmpv cierra Media Center entero con A. B lo aislaría, y es su principal ventaja. Es un riesgo aceptado en DC-17.
+- La DLL de A es la compilación publicada en v0.42.0. **No está aprobada para distribuirse:** su procedencia, las obligaciones de la LGPL y su empaquetado se verifican en DP-20, que sigue pendiente, y en F12.
+- «flip» de D3D11 solo se ha probado en este equipo y sigue como experimental.
+- La escala del 200 % no se ha probado.
+- La posible carrera al cambiar de hueco (el aviso de ocultar del hueco anterior llegando después del nuevo) no apareció con cambios cada 120 ms, pero no está descartada con cambios más rápidos. El diseño del motor de F7 la evita con un único hueco activo.
+- Siguen las limitaciones de F1.4: el recorte de la superficie con regiones, su retraso respecto al HTML, la rueda con paso fijo y los huecos obligatorios para los controles superpuestos.
+- Al volver de la pantalla completa se pierde la posición de desplazamiento de la vista.
+- Compatibilidad entre monitores: el 125 %, el 150 % y un segundo monitor con otra escala funcionan con la ventana arrastrada a mano. Mover la ventana por programa entre escalas distintas la desajusta. El 200 % no se ha probado.
+
+### Decisión
+
+El usuario aprobó el 2026-11-06 elegir **A, libmpv dentro del proceso** (DC-17). B queda descartada como solución principal y se conserva por ahora en el diagnóstico de desarrollo. Justificación:
+
+- Funcionalidad equivalente: A y B dieron los mismos resultados en todas las pruebas de F1.4 y F1.5. La superficie, el recorte, los huecos, el traslado entre huecos y la pantalla completa son comunes, así que la elección no cambia la interfaz.
+- Arquitectura más sencilla: una DLL y un hilo de eventos, frente al proceso aparte, la tubería por sesión, las dos conexiones JSON IPC y la terminación del proceso de B.
+- Menor consumo en las pruebas realizadas: algo menos de CPU y unos 55 MB menos de memoria de trabajo, como medida orientativa.
+- Compilación LGPL verificada: la DLL es la compilación LGPL de mpv v0.42.0, con SHA-256 y firma comprobados, y se carga dinámicamente. El `mpv.exe` oficial de B es GPL.
+
+La organización del motor del producto está en [ARCHITECTURE.md](ARCHITECTURE.md) y se construye al empezar F7.1.
+
+### Criterios de aceptación de F1.5
+
+| Criterio | Resultado |
+| --- | --- |
+| DP-01 pasa a confirmada, con la opción elegida y las descartadas | Cumplido: A elegida y B descartada como solución principal (DC-17) |
+| La decisión explica cómo se ampliará y se minimizará el vídeo sin reiniciar | Probado: una sola superficie que cambia de hueco, y pantalla completa de la ventana con la superficie ocupando el monitor. Descrito en ARCHITECTURE |
+| La decisión explica cómo el vídeo asociado permanecerá en silencio y seguirá la posición de la canción | Probado en F1.4 y F1.5: `video-add` en la misma sesión, solo el audio del archivo principal y saltos `relative+exact` |
+| F7.4, F7.6, F8.2 y F8.3 siguen sin empezar | Cumplido |
+
+Pruebas esenciales: las siete se ejecutaron en A y en B. Todas pasaron salvo la 5 (audio sin vídeo), que se acepta como defecto pendiente con un criterio obligatorio en F7.1.
+
 ## Documentación
 
 | Documento | Estado | Notas |
 | --- | --- | --- |
 | [PROJECT.md](PROJECT.md) | Redactado y revisado | Visión, alcance y vocabulario de archivo, ficha y lote |
 | [REQUIREMENTS.md](REQUIREMENTS.md) | Redactado y revisado | Confirmado, previsto, pendiente y futuro |
-| [ARCHITECTURE.md](ARCHITECTURE.md) | Redactado y revisado | Incluye el motor experimental de F1.4 |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | Redactado y revisado | Incluye el motor experimental de F1.4 y F1.5 y la organización del motor del producto para F7.1 |
 | [DATABASE.md](DATABASE.md) | Propuesta sin aprobar | No crear tablas a partir de él |
-| [ROADMAP.md](ROADMAP.md) | Redactado y revisado | F1.1, F1.2, F1.3 y F1.4 hechas |
+| [ROADMAP.md](ROADMAP.md) | Redactado y revisado | Fase 1 hecha (F1.1 a F1.5) |
 | [DECISIONS.md](DECISIONS.md) | Redactado y revisado | Confirmadas y pendientes |
 | [PROGRESS.md](PROGRESS.md) | Actualizado | Este documento |
 
@@ -300,7 +421,7 @@ No se ha implementado nada de esto. La lista recoge lo que habrá que comprobar 
 | Fase | Tema | Estado |
 | --- | --- | --- |
 | 0 | Cerrar la planificación | F0.1, F0.3 y F0.4 hechas como documentación. F0.2 pendiente: el esquema no está aprobado |
-| 1 | Esqueleto e integración inicial de libmpv | En curso. F1.1, F1.2, F1.3 y F1.4 hechas. F1.5 pendiente |
+| 1 | Esqueleto e integración inicial de libmpv | Hecha. F1.1 a F1.5 completadas; libmpv dentro del proceso elegido en DC-17 |
 | 2 | Persistencia | No iniciada. Bloqueada por la aprobación del esquema y por la ruta de los datos |
 | 3 | Importación | No iniciada. La segunda ficha por archivo sigue bloqueada |
 | 4 | Consulta de la biblioteca | No iniciada |
@@ -322,7 +443,6 @@ El detalle de cada tarea está en [ROADMAP.md](ROADMAP.md). Ninguna tarea está 
 | [DP-17](DECISIONS.md) Aprobar el esquema | Crear la migración inicial |
 | [DP-09](DECISIONS.md) Rutas de datos | Crear la base, la carpeta administrada y la guía de instalación |
 | [DP-10](DECISIONS.md) Herramienta de etiquetas | Extraer portadas y rellenar fichas al importar |
-| [DP-01](DECISIONS.md) Integración concreta de libmpv | Funciones avanzadas del reproductor. Se cierra en F1.5. Las observaciones de F1.4 están en DECISIONS |
 | [DP-04](DECISIONS.md) Referencias externas | Ofrecer un modo distinto de copiar y mover |
 | [DP-05](DECISIONS.md) Identidad de un archivo renombrado | Reconciliar rutas automáticamente |
 | [DP-06](DECISIONS.md) Duplicados de descarga | Avisar de una descarga repetida |
@@ -337,13 +457,13 @@ El detalle de cada tarea está en [ROADMAP.md](ROADMAP.md). Ninguna tarea está 
 | [DP-02](DECISIONS.md) y [DP-03](DECISIONS.md) Categorías y colecciones | Definir sus reglas. La migración posterior solo añadiría tablas nuevas |
 | [DP-11](DECISIONS.md) Escritura opcional de etiquetas | Ofrecer esa acción aparte |
 | [DP-19](DECISIONS.md) Formato del instalador | Generar el paquete de Windows |
-| [DP-20](DECISIONS.md) Empaquetado de herramientas externas | Decidir si viajan dentro del instalador |
+| [DP-20](DECISIONS.md) Empaquetado de herramientas externas | Decidir si viajan dentro del instalador. La DLL de libmpv usada en desarrollo no está aprobada para distribuirse |
 
-Decisiones ya cerradas: extracción de portadas (DC-12), datos propios de cada ficha (DC-13), copia y movimiento seguros (DC-14), momento de la integración de libmpv (DC-15) y evolución de categorías y colecciones por tablas nuevas (DC-16).
+Decisiones ya cerradas: extracción de portadas (DC-12), datos propios de cada ficha (DC-13), copia y movimiento seguros (DC-14), momento de la integración de libmpv (DC-15), evolución de categorías y colecciones por tablas nuevas (DC-16) e integración de libmpv dentro del proceso (DC-17, que cierra DP-01).
 
 ## Siguiente paso
 
-F1.4 está cerrada. El siguiente paso es planificar F1.5, la elección documentada de la integración que cierra DP-01, partiendo de A como candidata provisional, B como alternativa y las pruebas pendientes de la sección de F1.4. El trabajo se detiene antes de F1.5 a la espera de autorización.
+La fase 1 está cerrada. El trabajo se detiene aquí: no se empieza F7.1 ni ninguna otra tarea sin autorización. Además, F7.1 depende de F3.2, y la fase 2 sigue bloqueada por la aprobación del esquema (DP-17) y por las rutas de datos (DP-09).
 
 ## Historial
 
@@ -357,3 +477,5 @@ F1.4 está cerrada. El siguiente paso es planificar F1.5, la elección documenta
 | 2026-11-06 | F1.4 en revisión: integraciones experimentales A (libmpv) y B (mpv.exe por IPC) en el diagnóstico de desarrollo. Corregidos el vídeo sobre la barra al desplazar, la rueda sobre el vídeo, la apertura de un MP4 solo y el audio tras los saltos. DP-01 sigue pendiente. |
 | 2026-11-06 | F1.4: etiqueta de «flip» corregida, prueba de cierre con reproducción activa en A y B, A como candidata provisional y pruebas pendientes para las funciones avanzadas documentadas. |
 | 2026-11-06 | F1.4 hecha tras la aprobación de sus resultados. A es la candidata provisional y B la alternativa. DP-01 sigue abierta hasta F1.5. |
+| 2026-11-06 | F1.5 en revisión: pistas de audio, subtítulos incrustados y externos, dos modos de pantalla completa y traslado entre huecos añadidos al diagnóstico y probados en A y B, con escalas del 125 % y 150 %, un segundo monitor y medida de rendimiento. Hallado el recuadro negro con audio solo. Recomendación A, pendiente de aprobación. DP-01 sigue abierta. |
+| 2026-11-06 | F1.5 hecha tras la aprobación de sus resultados. DP-01 cerrada en DC-17: libmpv dentro del proceso (A). B descartada como solución principal y conservada por ahora en el diagnóstico. El recuadro negro con audio solo queda como defecto aceptado, con un criterio obligatorio en F7.1. DP-20 sigue pendiente: la DLL de desarrollo no está aprobada para distribuirse. |

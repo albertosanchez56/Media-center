@@ -1,9 +1,9 @@
 # Media Center — Arquitectura
 
-Estado del documento: propuesta de estructura, con la segunda revisión aplicada. La sección «Interfaz Angular implementada» describe el código que existe tras F1.3, y «Motor experimental de F1.4» el estudio de libmpv.  
+Estado del documento: propuesta de estructura, con la segunda revisión aplicada. La sección «Interfaz Angular implementada» describe el código que existe tras F1.3, «Motor experimental de F1.4 y F1.5» el estudio de libmpv, y «Organización del motor del producto» lo que se construirá en F7.1.  
 Última actualización: 2026-11-06.
 
-Este documento reparte responsabilidades entre la interfaz, la lógica y los datos. El procedimiento de copia y movimiento y la extracción de portadas están confirmados en [DECISIONS.md](DECISIONS.md). La integración concreta de libmpv, la herramienta de etiquetas y el esquema de SQLite siguen abiertos. El esquema propuesto está en [DATABASE.md](DATABASE.md) y no está aprobado.
+Este documento reparte responsabilidades entre la interfaz, la lógica y los datos. El procedimiento de copia y movimiento y la extracción de portadas están confirmados en [DECISIONS.md](DECISIONS.md). La integración de libmpv está elegida (DC-17). La herramienta de etiquetas y el esquema de SQLite siguen abiertos. El esquema propuesto está en [DATABASE.md](DATABASE.md) y no está aprobado.
 
 ## Vista general
 
@@ -146,17 +146,19 @@ El componente llama a `BridgeService`, que es el único punto que usa `invoke` y
 
 La entrada «Diagnóstico» del menú solo se dibuja cuando `isDevMode()` es verdadero. En la compilación de producción no aparece, y la sección no es alcanzable desde la interfaz. Es una herramienta de desarrollo, no una función del producto.
 
-`DiagnosticsViewComponent` muestra el encabezado «Diagnóstico» y dos tarjetas: la del puente y la del motor de F1.4.
+`DiagnosticsViewComponent` muestra el encabezado «Diagnóstico» y dos tarjetas: la del puente y la del motor de F1.4 y F1.5.
 
-### Motor experimental de F1.4
+### Motor experimental de F1.4 y F1.5
 
-Es un estudio para DP-01, no la integración elegida. A es la candidata provisional, pero no se construye nada del reproductor del producto sobre ella hasta F1.5. En Rust solo se compila con `debug_assertions` en Windows, y en Angular solo se usa desde el diagnóstico.
+Es el estudio con el que se cerró DP-01: la integración elegida es A (DC-17). El código del diagnóstico no es el reproductor del producto, que se construye a partir de F7.1. B se conserva aquí por ahora como alternativa descartada para el producto. En Rust solo se compila con `debug_assertions` en Windows, y en Angular solo se usa desde el diagnóstico.
 
 - `src-tauri/src/engine/` define el trait `EngineBackend` y un `EngineManager` que mantiene una sola reproducción. Tiene dos implementaciones:
   - A, `libmpv.rs`: libmpv dentro del proceso.
   - B, `mpv_process.rs`: `mpv.exe` controlado por JSON IPC.
 - Los comandos `engine_*` abren, pausan, saltan (`relative+exact`), detienen, leen pistas y colocan la superficie. El estado llega a Angular con el evento `engine-state`.
+- Desde F1.5 también eligen la pista de audio o de subtítulos, añaden un subtítulo externo y ponen a pantalla completa la ventana de Tauri (`engine_set_window_fullscreen`). `engine_set_engine_fullscreen` solo existe para medir la propiedad `fullscreen` de mpv, que no tiene efecto con `--wid`.
 - `EngineService` es la única vía de Angular hacia esos comandos y eventos.
+- El diagnóstico tiene dos huecos para el vídeo, el recuadro principal y un minirreproductor fijo. Solo uno lleva la directiva a la vez, así que la superficie pasa de uno a otro sin reiniciar la sesión.
 
 El vídeo no se dibuja en el HTML. mpv dibuja en una ventana hija Win32 (`surface.rs`) que Rust coloca encima del recuadro reservado:
 
@@ -165,6 +167,60 @@ El vídeo no se dibuja en el HTML. mpv dibuja en una ventana hija Win32 (`surfac
 - La ventana de vídeo que crea mpv se deshabilita, así el ratón llega a la superficie propia. Esta convierte la rueda en el evento `engine-surface-wheel` y la directiva desplaza el contenedor más cercano.
 
 Los resultados y las limitaciones están en [PROGRESS.md](PROGRESS.md).
+
+### Organización del motor del producto
+
+Se definió en F1.5 sobre la integración elegida, A (DC-17), y se construye al empezar F7.1. Hoy no existe nada de esto en el código.
+
+```mermaid
+flowchart LR
+  subgraph angular [Angular]
+    Panel[Panel derecho] --> Slot[Hueco de vídeo]
+    Ampliado[Vista ampliada] --> Slot
+    Mini[Minirreproductor] --> Slot
+    Barra[Barra inferior] --> PlayerService
+    Slot --> PlayerService
+  end
+  subgraph rust [Rust]
+    Commands["Comandos player_*"] --> Controller[PlayerController]
+    Controller --> EngineTrait[MediaEngine]
+    EngineTrait --> Libmpv[Adaptador de libmpv]
+    EngineTrait -.-> MpvProcess["Adaptador de mpv.exe, solo diagnóstico"]
+    Controller --> Surface[VideoSurface]
+  end
+  PlayerService -->|"invoke y eventos con tipos propios"| Commands
+```
+
+Rust:
+
+- `PlayerController` guarda la única sesión de reproducción y, más adelante, la cola. Vive en el estado de Tauri, así que la navegación de Angular no lo recrea.
+- El trait `MediaEngine` expresa operaciones del dominio: abrir un archivo principal con un vídeo asociado opcional, pausar y reanudar, saltar con exactitud, elegir la pista de audio o de subtítulos, añadir un subtítulo externo, detener y publicar el estado.
+- Los nombres de propiedades y órdenes de mpv (`aid`, `sid`, `sub-add`, `video-add`, `relative+exact`, `vo-configured`…) solo existen dentro del adaptador de libmpv.
+- `VideoSurface` es independiente de mpv: ventana hija, región, huecos y rueda. Solo se muestra cuando hay un hueco activo a la vista y el elemento tiene un videoclip; con audio solo queda oculta y la interfaz muestra la portada o el estado visual que corresponda. Una portada incrustada que mpv presente como pista de imagen (`albumart`) no cuenta como videoclip. En el diagnóstico de F1.5 la superficie todavía se muestra como un recuadro negro con audio solo: es un defecto aceptado que F7.1 tiene que resolver.
+- Las pruebas unitarias no pueden crear `PlayerController`, `VideoSurface` ni nada que enlace el código de ventanas de Tauri: el ejecutable de pruebas no arranca en Windows (`0xc0000139`). La lógica que se quiera probar va en funciones puras.
+- El motor deja de ser exclusivo de la compilación de desarrollo. La DLL se busca junto al ejecutable. La DLL usada en desarrollo no está aprobada para distribuirse: cómo viaja en el instalador, de qué compilación procede y qué obligaciones de licencia cumple se decide en DP-20.
+
+Limitaciones medidas en F1.4 y F1.5 que esta organización hereda:
+
+- La superficie va por encima de WebView2. Se recorta con una región a la parte visible y los controles HTML superpuestos necesitan huecos.
+- Sigue al HTML con un pequeño retraso y reenvía la rueda con un paso fijo de 100 px.
+- Al volver de la pantalla completa, la vista puede perder su posición de desplazamiento si no se guarda.
+- Los cambios de hueco con 120 ms de separación terminaron bien, pero no se ha descartado una carrera con cambios más rápidos. El único hueco activo es la protección prevista.
+- Al mover la ventana por programa entre monitores con escalas distintas, la escala de la página se desajustó. Arrastrándola a mano funciona. Las escalas del 125 % y 150 % y un segundo monitor se comprobaron; el 200 % no.
+- «flip» de D3D11 solo se ha probado en un equipo.
+
+Comandos y estado:
+
+- Comandos `player_*` con tipos propios: `PlaybackState` (archivo, posición, duración, pausa, si hay vídeo) y `Track` (identificador, tipo, título, idioma y si está activa).
+- Los comandos `engine_*` y la elección entre A y B siguen solo en el diagnóstico.
+
+Angular:
+
+- `PlayerService` es el único que llama a `invoke` para reproducir y escucha el estado que publica Rust.
+- La directiva `appVideoSurface` evoluciona a un hueco de vídeo. Puede haber varios huecos en la interfaz (panel derecho, vista ampliada, minirreproductor), pero solo uno activo a la vez. Así se evita que el aviso de ocultar del hueco anterior llegue después de colocar el nuevo.
+- Ampliar o minimizar es cambiar de hueco activo: la sesión y la superficie son las mismas y la reproducción no se reinicia.
+- La pantalla completa del vídeo es la ventana de Tauri a pantalla completa con un hueco que ocupa toda la ventana. Los controles encima del vídeo son huecos recortados. La propiedad `fullscreen` de mpv no se usa.
+- Los componentes del producto nunca ven tipos ni nombres de mpv.
 
 ### Estilos
 
@@ -195,7 +251,7 @@ En la barra de iconos los textos siguen en el DOM, ocultos solo visualmente, y c
 - Por debajo de 900 px el panel derecho no tiene alternativa. Conserva su área propia en la rejilla y su componente independiente para mostrarse más adelante como panel desplegable o vista alternativa, pero eso no está implementado.
 - No hay búsqueda, filtros, formularios, importación, descargas ni ajustes en la interfaz.
 - No hay router: la navegación es el signal de `NavigationService`.
-- Las únicas llamadas a Rust son las del diagnóstico de desarrollo: el puente de F1.2 y el motor experimental de F1.4.
+- Las únicas llamadas a Rust son las del diagnóstico de desarrollo: el puente de F1.2 y el motor experimental de F1.4 y F1.5.
 
 ## Comunicación entre interfaz y Rust
 
@@ -338,7 +394,7 @@ Una lectura posterior del archivo puede refrescar los campos de esa ficha que la
 
 Para una película, el controlador recuerda la posición en la ficha y la ofrece al volver a abrirla.
 
-La integración de libmpv se incorpora al principio del desarrollo, en la ventana real de Media Center. Con lo aprendido ahí se elige y se documenta una opción antes de construir las funciones avanzadas: ampliar y minimizar el vídeo, el minirreproductor, los subtítulos, las pistas y el vídeo asociado sincronizado. Esa elección está pendiente y tiene una tarea propia, F1.5, para no permanecer abierta sin límite.
+La integración de libmpv se incorpora al principio del desarrollo, en la ventana real de Media Center. Con lo aprendido ahí se eligió en F1.5 libmpv dentro del proceso (DC-17), antes de construir las funciones avanzadas: ampliar y minimizar el vídeo, el minirreproductor, los subtítulos, las pistas y el vídeo asociado sincronizado. Ampliar, minimizar y el minirreproductor son cambios del hueco activo de una sola superficie. La pantalla completa es la ventana de Tauri con un hueco que la ocupa entera.
 
 ### Canción con imagen en movimiento
 
@@ -350,7 +406,7 @@ El adaptador del motor tiene que poder separar la fuente de audio y la fuente de
 | Canción MP4 sin vídeo asociado | Archivo principal de la ficha | Vídeo de ese mismo archivo |
 | Canción con vídeo asociado | Archivo principal de la ficha | Archivo de vídeo asociado, en silencio |
 
-En los tres casos la persona controla una sola reproducción. El vídeo asociado sigue la pausa, la reanudación y la posición de la canción. La forma de conseguirlo forma parte de la integración que se documente en F1.5.
+En los tres casos la persona controla una sola reproducción. El vídeo asociado sigue la pausa, la reanudación y la posición de la canción. Con la integración elegida, el vídeo asociado se añade a la misma sesión de mpv (`video-add`), solo suena el archivo principal y los saltos son `relative+exact` para que el audio no quede retenido. Se comprobó en el diagnóstico de F1.4 y F1.5; en el producto llega con F8.2.
 
 ### Descargar
 
@@ -382,7 +438,7 @@ Cada integración externa se esconde detrás de un adaptador. El resto de la apl
 
 | Adaptador | Encargo confirmado | Elección abierta |
 | --- | --- | --- |
-| Motor multimedia | Abrir medios, controlar una sola reproducción, informar de posición, pistas y subtítulos, y separar audio de vídeo cuando haga falta | Forma concreta de integrar libmpv. Se elige en F1.5, antes de las funciones avanzadas |
+| Motor multimedia | Abrir medios, controlar una sola reproducción, informar de posición, pistas y subtítulos, y separar audio de vídeo cuando haga falta | Ninguna en la integración: libmpv dentro del proceso (DC-17). Sigue abierto el empaquetado de la DLL (DP-20) |
 | Descarga | Vista previa, descarga por lotes, progreso, cancelación y miniaturas de enlaces compatibles de YouTube | Versiones mínimas de yt-dlp y FFmpeg, la lista de formatos y si se empaquetan con el instalador |
 | Etiquetas | Leer metadatos y extraer la portada incrustada sin modificar el archivo | Herramienta concreta. La escritura opcional queda prevista y desactivada por defecto |
 
@@ -410,8 +466,9 @@ La ubicación de las carpetas y de la base está pendiente. [DATABASE.md](DATABA
 
 | Riesgo | Por qué importa | Cuándo se cierra |
 | --- | --- | --- |
-| Integrar libmpv con la ventana de Tauri | El vídeo tiene que verse dentro del diseño propio y, en las funciones avanzadas, ampliarse sin reiniciar y compartir controles con el audio | Al comienzo del desarrollo, en la tarea F1.5, antes de esas funciones. La elección sigue pendiente hasta entonces |
-| Audio y vídeo de archivos distintos | El vídeo asociado no puede sonar y debe seguir la posición de la canción | La misma elección de F1.5, antes de la personalización visual avanzada |
+| Integrar libmpv con la ventana de Tauri | El vídeo tiene que verse dentro del diseño propio y, en las funciones avanzadas, ampliarse sin reiniciar y compartir controles con el audio | Integración elegida en F1.5 (DC-17) y viabilidad comprobada en el diagnóstico. Quedan las limitaciones de la superficie descritas en «Organización del motor del producto», que se vigilan al construir F7 |
+| Audio y vídeo de archivos distintos | El vídeo asociado no puede sonar y debe seguir la posición de la canción | Viabilidad comprobada en F1.4 y F1.5 con `video-add` y saltos exactos. Se cierra al implementar F8.2 |
+| Fallo grave de libmpv | Con libmpv dentro del proceso, un fallo del motor cierra Media Center entero | Riesgo aceptado en DC-17. La alternativa B lo aislaría y se conserva por ahora en el diagnóstico |
 | Identidad de un archivo movido | Sin un criterio estable, un renombre puede desenganchar las fichas o crear otra ficha sin querer | Decisión de identidad, antes de la reconciliación |
 | Operación de archivo interrumpida | Un movimiento a medias podría perder el original | El diario y la recuperación de este documento. No se borra el original con incertidumbre |
 | Procesos externos de yt-dlp y FFmpeg | Hace falta localizarlos, limitar el tiempo de espera y explicar un fallo sin dañar la biblioteca | Primera tarea del descargador. Empaquetarlos o exigirlos en la instalación sigue pendiente |

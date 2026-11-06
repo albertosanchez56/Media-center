@@ -34,6 +34,16 @@
         (input)="associatedVideo.set(text($event))"
       />
     </label>
+    <label>
+      <span>Subtítulo externo (.srt o .ass)</span>
+      <input
+        type="text"
+        spellcheck="false"
+        placeholder="C:\ruta\subtitulos.srt"
+        [value]="subtitlePath()"
+        (input)="subtitlePath.set(text($event))"
+      />
+    </label>
     <label class="check">
       <input type="checkbox" [checked]="d3d11Flip()" (change)="d3d11Flip.set(checked($event))" />
       <span>
@@ -65,6 +75,58 @@
     </div>
   </div>
 
+  <div class="actions" role="group" aria-label="Subtítulos">
+    <button
+      type="button"
+      [disabled]="busy() || !active() || cleanSubtitlePath() === ''"
+      (click)="addSubtitle()"
+    >
+      Añadir subtítulo
+    </button>
+    <button type="button" [disabled]="busy() || !active()" (click)="useTrack('subtitle', null)">
+      Sin subtítulos
+    </button>
+  </div>
+
+  <div class="actions" role="group" aria-label="Pantalla completa">
+    <button
+      type="button"
+      [disabled]="busy() || fullscreen() === 'video'"
+      [attr.aria-pressed]="fullscreen() === 'window'"
+      (click)="toggleWindowFullscreen()"
+    >
+      Ventana a pantalla completa
+    </button>
+    <button
+      type="button"
+      [disabled]="busy() || !active() || fullscreen() !== 'off'"
+      (click)="enterVideoFullscreen()"
+    >
+      Vídeo a pantalla completa
+    </button>
+    <button
+      type="button"
+      [disabled]="busy() || !active()"
+      [attr.aria-pressed]="engineFullscreen()"
+      (click)="toggleEngineFullscreen()"
+    >
+      Propiedad fullscreen de mpv
+    </button>
+  </div>
+
+  <div class="actions" role="group" aria-label="Hueco del vídeo">
+    @for (option of slots; track option.slot) {
+      <button
+        type="button"
+        [disabled]="fullscreen() === 'video'"
+        [attr.aria-pressed]="slot() === option.slot"
+        (click)="slot.set(option.slot)"
+      >
+        {{ option.label }}
+      </button>
+    }
+  </div>
+
   <div class="actions" role="group" aria-label="Superposición HTML">
     <label class="check">
       <input type="checkbox" [checked]="overlay()" (change)="overlay.set(checked($event))" />
@@ -92,51 +154,68 @@
     <p class="message warning" role="status">{{ message }}</p>
   }
 
-  <div
-    class="stage"
-    [class]="'stage size-' + size()"
-    appVideoSurface
-    [clipHoles]="clip()"
-    aria-label="Área reservada para el vídeo"
-    role="region"
-  >
-    @if (overlay()) {
-      <div class="overlay">
-        <div class="overlay-item" data-surface-hole>
-          <button type="button" (click)="overlayClicks.set(overlayClicks() + 1)">
-            Botón superpuesto
-          </button>
+  @if (slot() === 'mini') {
+    <div
+      class="stage"
+      [class]="'stage placeholder size-' + stageSize()"
+      aria-label="Hueco principal sin vídeo"
+      role="region"
+    >
+      <p>El vídeo está en el minirreproductor.</p>
+    </div>
+    <div class="mini" appVideoSurface aria-label="Minirreproductor de prueba" role="region"></div>
+  } @else {
+    <div
+      class="stage"
+      [class]="'stage size-' + stageSize()"
+      appVideoSurface
+      [clipHoles]="clip() || fullscreen() === 'video'"
+      aria-label="Área reservada para el vídeo"
+      role="region"
+    >
+      @if (fullscreen() === 'video') {
+        <div class="exit-fullscreen" data-surface-hole>
+          <button type="button" (click)="exitFullscreen()">Salir de pantalla completa</button>
         </div>
-        <div class="overlay-item menu" data-surface-hole>
-          <button
-            type="button"
-            aria-haspopup="menu"
-            [attr.aria-expanded]="menuOpen()"
-            (click)="menuOpen.set(!menuOpen())"
-          >
-            Menú
-          </button>
-          @if (menuOpen()) {
-            <ul role="menu" data-surface-hole>
-              @for (item of menuItems; track item) {
-                <li role="none">
-                  <button type="button" role="menuitem" (click)="choose(item)">{{ item }}</button>
-                </li>
-              }
-            </ul>
-          }
+      }
+      @if (overlay()) {
+        <div class="overlay">
+          <div class="overlay-item" data-surface-hole>
+            <button type="button" (click)="overlayClicks.set(overlayClicks() + 1)">
+              Botón superpuesto
+            </button>
+          </div>
+          <div class="overlay-item menu" data-surface-hole>
+            <button
+              type="button"
+              aria-haspopup="menu"
+              [attr.aria-expanded]="menuOpen()"
+              (click)="menuOpen.set(!menuOpen())"
+            >
+              Menú
+            </button>
+            @if (menuOpen()) {
+              <ul role="menu" data-surface-hole>
+                @for (item of menuItems; track item) {
+                  <li role="none">
+                    <button type="button" role="menuitem" (click)="choose(item)">{{ item }}</button>
+                  </li>
+                }
+              </ul>
+            }
+          </div>
+          <div class="overlay-item" data-surface-hole>
+            <input
+              type="text"
+              aria-label="Campo superpuesto"
+              placeholder="Escribe aquí"
+              (keydown)="keyCount.set(keyCount() + 1)"
+            />
+          </div>
         </div>
-        <div class="overlay-item" data-surface-hole>
-          <input
-            type="text"
-            aria-label="Campo superpuesto"
-            placeholder="Escribe aquí"
-            (keydown)="keyCount.set(keyCount() + 1)"
-          />
-        </div>
-      </div>
-    }
-  </div>
+      }
+    </div>
+  }
 
   <dl class="readout" aria-label="Eventos recibidos por los controles superpuestos">
     <dt>Clics en el botón</dt>
@@ -188,8 +267,10 @@
             <th scope="col">Activa</th>
             <th scope="col">Externa</th>
             <th scope="col">Portada</th>
+            <th scope="col">Idioma</th>
             <th scope="col">Códec</th>
             <th scope="col">Origen</th>
+            <th scope="col">Acción</th>
           </tr>
         </thead>
         <tbody>
@@ -200,8 +281,16 @@
               <td>{{ track.selected ? 'sí' : 'no' }}</td>
               <td>{{ track.external ? 'sí' : 'no' }}</td>
               <td>{{ track.albumart ? 'sí' : 'no' }}</td>
+              <td>{{ track.language ?? '—' }}</td>
               <td>{{ track.codec ?? '—' }}</td>
               <td>{{ track.externalFilename ?? track.title ?? '—' }}</td>
+              <td>
+                @if (selectable(track); as kind) {
+                  <button type="button" [disabled]="busy()" (click)="useTrack(kind, track.id)">
+                    {{ kind === 'audio' ? 'Usar audio' : 'Mostrar subtítulo' }} {{ track.id }}
+                  </button>
+                }
+              </td>
             </tr>
           }
         </tbody>
