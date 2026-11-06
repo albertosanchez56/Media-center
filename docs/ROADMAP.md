@@ -93,7 +93,7 @@ Objetivo: abrir una ventana de escritorio, comprobar el puente con Rust e incorp
 
 ### F1.4 Incorporar libmpv en la ventana de Media Center
 
-- **Estado:** pendiente
+- **Estado:** hecha el 2026-11-06. Verificada con las integraciones A y B; los resultados, las limitaciones y las pruebas pendientes están en [PROGRESS.md](PROGRESS.md). A es la candidata provisional y B queda documentada como alternativa. DP-01 sigue abierta hasta F1.5
 - **Depende de:** F1.1 y F0.3
 - **Descripción:** Estudiar las opciones de DP-01 dentro de esta aplicación y conseguir reproducir un archivo local en su ventana. Es el comienzo del trabajo de integración, no un prototipo aparte.
 - **Criterios de aceptación:**

@@ -1,0 +1,247 @@
+<section class="engine" aria-label="Prueba del motor multimedia">
+  <h2>Motor multimedia (experimental)</h2>
+  <p class="note">
+    Compara las dos integraciones de mpv en estudio. Usa archivos propios: no se guardan en el
+    repositorio.
+  </p>
+
+  <div class="form">
+    <label>
+      <span>Integración</span>
+      <select [disabled]="busy()" (change)="chooseKind($event)">
+        @for (option of engineOptions; track option.kind) {
+          <option [value]="option.kind" [selected]="option.kind === kind()">{{ option.label }}</option>
+        }
+      </select>
+    </label>
+    <label>
+      <span>Archivo principal (audio o vídeo)</span>
+      <input
+        type="text"
+        spellcheck="false"
+        placeholder="C:\ruta\cancion.mp3 o C:\ruta\pelicula.mp4"
+        [value]="path()"
+        (input)="path.set(text($event))"
+      />
+    </label>
+    <label>
+      <span>Vídeo asociado (solo imagen, opcional)</span>
+      <input
+        type="text"
+        spellcheck="false"
+        placeholder="Imagen para una canción: C:\ruta\videoclip.mp4"
+        [value]="associatedVideo()"
+        (input)="associatedVideo.set(text($event))"
+      />
+    </label>
+    <label class="check">
+      <input type="checkbox" [checked]="d3d11Flip()" (change)="d3d11Flip.set(checked($event))" />
+      <span>
+        Presentación «flip» de D3D11 (experimental: la compatibilidad puede variar según el equipo)
+      </span>
+    </label>
+  </div>
+
+  <div class="controls" [class.docked]="size() === 'expanded'">
+    <div class="actions" role="group" aria-label="Reproducción">
+      <button type="button" [disabled]="busy() || mainPath() === ''" (click)="open()">Abrir</button>
+      <button type="button" [disabled]="busy() || !active()" (click)="togglePause()">
+        {{ state().pause ? 'Reanudar' : 'Pausa' }}
+      </button>
+      <button type="button" [disabled]="busy() || !active()" (click)="seek(-10)">−10 s</button>
+      <button type="button" [disabled]="busy() || !active()" (click)="seek(10)">+10 s</button>
+      <button type="button" [disabled]="busy() || !active()" (click)="stop()">Detener</button>
+    </div>
+    <div class="actions" role="group" aria-label="Tamaño del vídeo">
+      @for (option of stageSizes; track option.size) {
+        <button
+          type="button"
+          [attr.aria-pressed]="size() === option.size"
+          (click)="size.set(option.size)"
+        >
+          {{ option.label }}
+        </button>
+      }
+    </div>
+  </div>
+
+  <div class="actions" role="group" aria-label="Superposición HTML">
+    <label class="check">
+      <input type="checkbox" [checked]="overlay()" (change)="overlay.set(checked($event))" />
+      <span>Mostrar controles HTML sobre el vídeo</span>
+    </label>
+    <label class="check">
+      <input type="checkbox" [checked]="clip()" (change)="clip.set(checked($event))" />
+      <span>Recortar huecos en la superficie</span>
+    </label>
+  </div>
+
+  @if (mainPath() === '' && associatedPath() !== '') {
+    <p class="message warning missing-main" role="status">
+      Falta el archivo principal. Para ver un vídeo con su propio sonido, escríbelo en «Archivo
+      principal»; el vídeo asociado solo aporta la imagen de una canción.
+    </p>
+  }
+  @if (error(); as message) {
+    <p class="message error" role="alert">{{ message }}</p>
+  }
+  @if (surfaceError(); as message) {
+    <p class="message error" role="alert">Superficie de vídeo: {{ message }}</p>
+  }
+  @if (state().lastError; as message) {
+    <p class="message warning" role="status">{{ message }}</p>
+  }
+
+  <div
+    class="stage"
+    [class]="'stage size-' + size()"
+    appVideoSurface
+    [clipHoles]="clip()"
+    aria-label="Área reservada para el vídeo"
+    role="region"
+  >
+    @if (overlay()) {
+      <div class="overlay">
+        <div class="overlay-item" data-surface-hole>
+          <button type="button" (click)="overlayClicks.set(overlayClicks() + 1)">
+            Botón superpuesto
+          </button>
+        </div>
+        <div class="overlay-item menu" data-surface-hole>
+          <button
+            type="button"
+            aria-haspopup="menu"
+            [attr.aria-expanded]="menuOpen()"
+            (click)="menuOpen.set(!menuOpen())"
+          >
+            Menú
+          </button>
+          @if (menuOpen()) {
+            <ul role="menu" data-surface-hole>
+              @for (item of menuItems; track item) {
+                <li role="none">
+                  <button type="button" role="menuitem" (click)="choose(item)">{{ item }}</button>
+                </li>
+              }
+            </ul>
+          }
+        </div>
+        <div class="overlay-item" data-surface-hole>
+          <input
+            type="text"
+            aria-label="Campo superpuesto"
+            placeholder="Escribe aquí"
+            (keydown)="keyCount.set(keyCount() + 1)"
+          />
+        </div>
+      </div>
+    }
+  </div>
+
+  <dl class="readout" aria-label="Eventos recibidos por los controles superpuestos">
+    <dt>Clics en el botón</dt>
+    <dd class="overlay-clicks">{{ overlayClicks() }}</dd>
+    <dt>Opción del menú</dt>
+    <dd class="menu-choice">{{ menuChoice() ?? '—' }}</dd>
+    <dt>Teclas en el campo</dt>
+    <dd class="key-count">{{ keyCount() }}</dd>
+  </dl>
+
+  <dl class="readout" aria-label="Estado del motor">
+    <dt>Integración</dt>
+    <dd>{{ state().kind ?? 'Sin reproducción' }}</dd>
+    <dt>Posición</dt>
+    <dd>{{ seconds(state().timePos) }} / {{ seconds(state().duration) }}</dd>
+    <dt>En pausa</dt>
+    <dd>{{ state().pause ? 'Sí' : 'No' }}</dd>
+    <dt>Desfase audio/vídeo</dt>
+    <dd>{{ seconds(state().avsync, 3) }}</dd>
+    <dt>Archivos iniciados / cargados</dt>
+    <dd>{{ state().startFileCount }} / {{ state().fileLoadedCount }}</dd>
+    <dt>Proceso de mpv</dt>
+    <dd>{{ state().processId ?? '—' }}</dd>
+    <dt>mpv</dt>
+    <dd>{{ state().mpvVersion ?? '—' }}</dd>
+    <dt>FFmpeg</dt>
+    <dd>{{ state().ffmpegVersion ?? '—' }}</dd>
+    <dt>Compilación LGPL</dt>
+    <dd>{{ state().lgplBuild === null ? '—' : state().lgplBuild ? 'Sí' : 'No' }}</dd>
+  </dl>
+
+  <div class="actions" role="group" aria-label="Medidas">
+    <button type="button" [disabled]="busy() || !active()" (click)="readTracks()">Leer pistas</button>
+    <button type="button" [disabled]="busy()" (click)="readWindows()">Informe de ventanas</button>
+  </div>
+
+  @if (tracks(); as report) {
+    <div class="table-scroll">
+      <table>
+        <caption>
+          Pistas · audio solo del archivo principal:
+          {{ report.audioOnlyFromMainFile ? 'sí' : 'no' }} · vídeo externo:
+          {{ report.selectedExternalVideo ?? 'ninguno' }}
+        </caption>
+        <thead>
+          <tr>
+            <th scope="col">Id</th>
+            <th scope="col">Tipo</th>
+            <th scope="col">Activa</th>
+            <th scope="col">Externa</th>
+            <th scope="col">Portada</th>
+            <th scope="col">Códec</th>
+            <th scope="col">Origen</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (track of report.tracks; track $index) {
+            <tr>
+              <td>{{ track.id ?? '—' }}</td>
+              <td>{{ track.kind }}</td>
+              <td>{{ track.selected ? 'sí' : 'no' }}</td>
+              <td>{{ track.external ? 'sí' : 'no' }}</td>
+              <td>{{ track.albumart ? 'sí' : 'no' }}</td>
+              <td>{{ track.codec ?? '—' }}</td>
+              <td>{{ track.externalFilename ?? track.title ?? '—' }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    <dl class="readout playback" aria-label="Estado del audio y la reproducción">
+      @for (reading of report.playback; track reading.name) {
+        <dt>{{ reading.name }}</dt>
+        <dd>{{ reading.value ?? 'no disponible' }}</dd>
+      }
+    </dl>
+  }
+
+  @if (report(); as windows) {
+    <div class="windows">
+      <p>
+        Superficie {{ windows.surfaceVisible ? 'visible' : 'oculta' }} en
+        {{ rect(windows.surfaceRect) }} · ventanas de vídeo: {{ windows.videoWindows.length }} ·
+        ventanas sueltas: {{ windows.strayWindows.length }} · rectángulos de la región:
+        {{ windows.region.length }}
+      </p>
+      <ul>
+        @for (entry of windows.videoWindows; track entry.handle) {
+          <li>
+            Vídeo: {{ entry.className }} (proceso {{ entry.processId }},
+            {{ entry.enabled ? 'recibe el ratón' : 'deshabilitada' }}) en {{ rect(entry.rect) }}
+          </li>
+        }
+        @for (entry of windows.strayWindows; track entry.handle) {
+          <li class="stray">
+            Ventana suelta: {{ entry.className }} «{{ entry.title }}» (proceso {{ entry.processId }})
+          </li>
+        }
+        @for (hit of windows.hitTests; track $index) {
+          <li>
+            Punto {{ hit.point.x }}, {{ hit.point.y }}: {{ hit.className }}
+            {{ hit.hitsVideo ? '(vídeo)' : '(interfaz)' }}
+          </li>
+        }
+      </ul>
+    </div>
+  }
+</section>

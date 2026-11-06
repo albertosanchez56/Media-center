@@ -3,7 +3,7 @@
 
   <main class="main">
     @if (section() === 'diagnostics') {
-      <app-bridge-diagnostics />
+      <app-diagnostics-view />
     } @else if (currentLibrary(); as library) {
       <app-library-view [library]="library" />
     }

@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
 import { invoke } from '@tauri-apps/api/core';
+import { describeError } from '../shared/describe-error';
 
 /** Debe coincidir con `INTENTIONAL_FAILURE_CODE` en `src-tauri/src/commands.rs`. */
 const INTENTIONAL_FAILURE_PREFIX = 'INTENTIONAL_FAILURE: ';
@@ -22,11 +23,4 @@ export class BridgeService {
       return { kind: 'communication-error', message: describeError(error) };
     }
   }
-}
-
-function describeError(error: unknown): string {
-  if (error instanceof Error) {
-    return error.message;
-  }
-  return String(error);
 }

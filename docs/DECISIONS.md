@@ -146,6 +146,17 @@ Estados: confirmada, pendiente, prevista, descartada.
   - Pausa, reanudación y salto de posición aplicados a las dos fuentes.
   - Subtítulos, pistas de audio y pantalla completa.
 - **Consecuencias de dejarla abierta durante la planificación:** Se puede documentar el producto y, al empezar el desarrollo, construir la ventana y probar las opciones dentro de ella. No se implementan las funciones avanzadas sobre una integración supuesta. La decisión no permanece abierta después de F1.5.
+- **Observaciones de F1.4 (2026-11-06), sin elegir opción:** Se probaron dos integraciones, con el detalle y la evidencia en [PROGRESS.md](PROGRESS.md):
+  - A: `libmpv-2.dll` LGPL cargada dentro del proceso de Media Center.
+  - B: `mpv.exe` en otro proceso, controlado por JSON IPC sobre una tubería con nombre.
+  - Las dos dibujan en la misma ventana hija Win32, colocada sobre un recuadro reservado del HTML. En las pruebas se comportaron igual: reproducción, vídeo asociado en silencio con desfase de 0,000 s tras pausa y saltos, tamaños sin reiniciar, recorte al desplazar, rueda y controles HTML con huecos.
+  - Diferencias observadas: B depende de un ejecutable aparte, de una tubería por sesión y de un proceso que hay que terminar al detener. La compilación oficial de mpv.exe es GPL; la DLL de A es LGPL.
+  - Limitaciones comunes de la superficie nativa: va por encima de WebView2 y hay que recortarla con una región; sigue al HTML con un pequeño retraso; los controles HTML encima del vídeo necesitan huecos; la rueda se reenvía con un paso fijo.
+  - Los saltos tienen que ser `relative+exact`. Con `relative`, el audio de una canción con vídeo asociado se queda retenido hasta el siguiente fotograma clave del vídeo.
+  - Con la presentación «flip» de D3D11 el recorte se respetó en el equipo de prueba. No se ha comprobado en otros equipos y se trata como opción experimental.
+  - Al cerrar Media Center con una reproducción activa, ninguna de las dos deja procesos propios ni tuberías.
+  - **Candidata provisional: A**, desde el 2026-11-06. **B queda documentada como alternativa.** No es una elección: DP-01 sigue pendiente hasta F1.5. F1.4 está hecha y el código de las dos integraciones se conserva en el diagnóstico de desarrollo para F1.5.
+  - Pendiente de comprobar para cerrar DP-01: subtítulos, pistas de audio, pantalla completa, varios monitores y otras escalas. Las pruebas y sus dependencias están en [PROGRESS.md](PROGRESS.md), en «Pruebas pendientes para las funciones avanzadas».
 
 ### DP-02 Reglas de las categorías personalizadas
 

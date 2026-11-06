@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
-import { BridgeDiagnosticsComponent } from './diagnostics/bridge-diagnostics/bridge-diagnostics.component';
+import { DiagnosticsViewComponent } from './diagnostics/diagnostics-view/diagnostics-view.component';
 import { LibraryViewComponent } from './layout/library-view/library-view.component';
 import { NowPlayingPanelComponent } from './layout/now-playing-panel/now-playing-panel.component';
 import { PlayerBarComponent } from './layout/player-bar/player-bar.component';
@@ -13,7 +13,7 @@ import { NavigationService } from './navigation/navigation.service';
     LibraryViewComponent,
     NowPlayingPanelComponent,
     PlayerBarComponent,
-    BridgeDiagnosticsComponent,
+    DiagnosticsViewComponent,
   ],
   templateUrl: './app.html',
   styleUrl: './app.scss',

@@ -1,7 +1,7 @@
 # Media Center — Arquitectura
 
-Estado del documento: propuesta de estructura, con la segunda revisión aplicada. La sección «Interfaz Angular implementada» describe el código que existe tras F1.3.  
-Última actualización: 2026-11-05.
+Estado del documento: propuesta de estructura, con la segunda revisión aplicada. La sección «Interfaz Angular implementada» describe el código que existe tras F1.3, y «Motor experimental de F1.4» el estudio de libmpv.  
+Última actualización: 2026-11-06.
 
 Este documento reparte responsabilidades entre la interfaz, la lógica y los datos. El procedimiento de copia y movimiento y la extracción de portadas están confirmados en [DECISIONS.md](DECISIONS.md). La integración concreta de libmpv, la herramienta de etiquetas y el esquema de SQLite siguen abiertos. El esquema propuesto está en [DATABASE.md](DATABASE.md) y no está aprobado.
 
@@ -80,10 +80,16 @@ src/
     shared/
       icon/                     Iconos SVG
       empty-state/              Estado vacío reutilizable
+      describe-error.ts         Texto legible de un error de invoke
     bridge/
-      bridge.service.ts         Único punto que llama a invoke
+      bridge.service.ts         Comprobación del puente con Rust
+    engine/
+      engine.service.ts         Comandos y eventos del motor experimental
+      video-surface.directive.ts  Recuadro reservado para el vídeo nativo
     diagnostics/
+      diagnostics-view/         Vista «Diagnóstico»
       bridge-diagnostics/       Comprobación del puente con Rust
+      engine-diagnostics/       Prueba del motor de F1.4
 ```
 
 Cada componente tiene su archivo `.spec.ts` con pruebas de Vitest.
@@ -93,7 +99,7 @@ Cada componente tiene su archivo `.spec.ts` con pruebas de Vitest.
 `App` no tiene lógica de negocio. Sus responsabilidades son:
 
 - Colocar las cuatro zonas en una rejilla CSS: menú lateral, zona central, panel derecho y barra inferior.
-- Leer de `NavigationService` la sección activa y elegir qué se muestra en la zona central: `LibraryViewComponent` con la biblioteca activa o, en la sección de diagnóstico, `BridgeDiagnosticsComponent`.
+- Leer de `NavigationService` la sección activa y elegir qué se muestra en la zona central: `LibraryViewComponent` con la biblioteca activa o, en la sección de diagnóstico, `DiagnosticsViewComponent`.
 - Dar a cada zona su elemento semántico: `main` para la zona central, `aside` con `aria-label="Ahora suena"` para el panel y `section` con `aria-label="Controles de reproducción"` para la barra inferior. El menú aporta su propio `nav`.
 
 Cada zona tiene `min-width: 0` y su propio desplazamiento, para que el contenido de una no desborde a las demás.
@@ -140,6 +146,26 @@ El componente llama a `BridgeService`, que es el único punto que usa `invoke` y
 
 La entrada «Diagnóstico» del menú solo se dibuja cuando `isDevMode()` es verdadero. En la compilación de producción no aparece, y la sección no es alcanzable desde la interfaz. Es una herramienta de desarrollo, no una función del producto.
 
+`DiagnosticsViewComponent` muestra el encabezado «Diagnóstico» y dos tarjetas: la del puente y la del motor de F1.4.
+
+### Motor experimental de F1.4
+
+Es un estudio para DP-01, no la integración elegida. A es la candidata provisional, pero no se construye nada del reproductor del producto sobre ella hasta F1.5. En Rust solo se compila con `debug_assertions` en Windows, y en Angular solo se usa desde el diagnóstico.
+
+- `src-tauri/src/engine/` define el trait `EngineBackend` y un `EngineManager` que mantiene una sola reproducción. Tiene dos implementaciones:
+  - A, `libmpv.rs`: libmpv dentro del proceso.
+  - B, `mpv_process.rs`: `mpv.exe` controlado por JSON IPC.
+- Los comandos `engine_*` abren, pausan, saltan (`relative+exact`), detienen, leen pistas y colocan la superficie. El estado llega a Angular con el evento `engine-state`.
+- `EngineService` es la única vía de Angular hacia esos comandos y eventos.
+
+El vídeo no se dibuja en el HTML. mpv dibuja en una ventana hija Win32 (`surface.rs`) que Rust coloca encima del recuadro reservado:
+
+- WebView2 no puede dibujar encima de esa ventana, y el `overflow` del HTML no la recorta.
+- La directiva `appVideoSurface` envía el rectángulo del recuadro y su parte visible: la intersección con los antepasados que recortan y con la ventana. Rust recorta la ventana con `SetWindowRgn` a esa parte, menos los huecos de los elementos marcados con `data-surface-hole`. Si no se ve nada, la oculta sin detener mpv.
+- La ventana de vídeo que crea mpv se deshabilita, así el ratón llega a la superficie propia. Esta convierte la rueda en el evento `engine-surface-wheel` y la directiva desplaza el contenedor más cercano.
+
+Los resultados y las limitaciones están en [PROGRESS.md](PROGRESS.md).
+
 ### Estilos
 
 | Archivo | Contenido |
@@ -169,7 +195,7 @@ En la barra de iconos los textos siguen en el DOM, ocultos solo visualmente, y c
 - Por debajo de 900 px el panel derecho no tiene alternativa. Conserva su área propia en la rejilla y su componente independiente para mostrarse más adelante como panel desplegable o vista alternativa, pero eso no está implementado.
 - No hay búsqueda, filtros, formularios, importación, descargas ni ajustes en la interfaz.
 - No hay router: la navegación es el signal de `NavigationService`.
-- La única llamada a Rust es la del diagnóstico de desarrollo.
+- Las únicas llamadas a Rust son las del diagnóstico de desarrollo: el puente de F1.2 y el motor experimental de F1.4.
 
 ## Comunicación entre interfaz y Rust
 

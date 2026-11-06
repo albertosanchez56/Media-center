@@ -6,7 +6,16 @@ describe('App', () => {
   let fixture: ComponentFixture<App>;
   let element: HTMLElement;
 
+  afterEach(() => vi.unstubAllGlobals());
+
   beforeEach(async () => {
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        observe(): void {}
+        disconnect(): void {}
+      },
+    );
     const bridgeStub: Pick<BridgeService, 'check'> = {
       check: () => new Promise(() => undefined),
     };
@@ -52,5 +61,6 @@ describe('App', () => {
     await fixture.whenStable();
     expect(element.querySelector('main h1')?.textContent).toContain('Diagnóstico');
     expect(element.querySelector('main')?.textContent).toContain('Probar conexión con Rust');
+    expect(element.querySelector('main section[aria-label="Prueba del motor multimedia"]')).not.toBeNull();
   });
 });
