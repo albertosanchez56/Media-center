@@ -10,6 +10,7 @@
 .view-header {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: var(--space-4);
   min-width: 0;
 }
@@ -28,7 +29,23 @@
 }
 
 .view-titles {
+  flex: 1;
   min-width: 0;
+}
+
+.import-button {
+  flex-shrink: 0;
+  margin-left: auto;
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background-color: var(--color-accent);
+  color: #fff;
+  cursor: pointer;
+
+  &:hover {
+    filter: brightness(1.08);
+  }
 }
 
 .eyebrow {
@@ -62,5 +79,9 @@ h1 {
     width: 48px;
     height: 48px;
     --icon-size: 24px;
+  }
+
+  .import-button {
+    margin-left: 0;
   }
 }

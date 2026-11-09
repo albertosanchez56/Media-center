@@ -1,0 +1,56 @@
+@if (session.visible()) {
+<section class="import-panel" aria-labelledby="import-heading">
+  <div class="import-heading-row">
+    <h2 id="import-heading">Importar</h2>
+    <button type="button" class="text-button" (click)="session.hide()">Cerrar</button>
+  </div>
+
+  <fieldset>
+    <legend>Biblioteca de destino</legend>
+    <div class="library-choices">
+      @for (library of libraries; track library.id) {
+        <label>
+          <input
+            type="radio"
+            name="destination-library"
+            [value]="library.id"
+            [checked]="session.library() === library.id"
+            (change)="session.chooseLibrary(library.id)"
+          />
+          {{ library.name }}
+        </label>
+      }
+    </div>
+  </fieldset>
+
+  <div class="actions">
+    <button type="button" [disabled]="session.pending()" (click)="session.pick('files')">
+      Elegir archivos
+    </button>
+    <button type="button" [disabled]="session.pending()" (click)="session.pick('folder')">
+      Elegir carpeta
+    </button>
+  </div>
+
+  @if (session.error(); as message) {
+    <p class="error" role="alert">{{ message }}</p>
+  }
+
+  @if (session.selection(); as selection) {
+    <div class="summary" aria-live="polite">
+      <h3>Selección</h3>
+      <p>Biblioteca: {{ libraryName(selection.library) }}</p>
+      <p>{{ selection.kind === 'files' ? 'Archivos' : 'Carpeta' }}</p>
+      <ul>
+        @for (path of selection.paths; track path) {
+          <li>
+            <span class="path-name">{{ pathName(path) }}</span>
+            <span class="path-full" [title]="path">{{ path }}</span>
+          </li>
+        }
+      </ul>
+      <p class="note">No se ha copiado ni registrado nada.</p>
+    </div>
+  }
+</section>
+}

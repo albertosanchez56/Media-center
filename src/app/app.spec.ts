@@ -1,6 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { App } from './app';
 import { BridgeService } from './bridge/bridge.service';
+import { FileDialog } from './import/file-dialog';
 
 describe('App', () => {
   let fixture: ComponentFixture<App>;
@@ -22,7 +23,13 @@ describe('App', () => {
 
     await TestBed.configureTestingModule({
       imports: [App],
-      providers: [{ provide: BridgeService, useValue: bridgeStub }],
+      providers: [
+        { provide: BridgeService, useValue: bridgeStub },
+        {
+          provide: FileDialog,
+          useValue: { openFiles: () => Promise.resolve(null), openFolder: () => Promise.resolve(null) },
+        },
+      ],
     }).compileComponents();
 
     fixture = TestBed.createComponent(App);
@@ -47,6 +54,7 @@ describe('App', () => {
 
   it('should show the music library by default', () => {
     expect(element.querySelector('main h1')?.textContent).toContain('Música');
+    expect(element.querySelector('main .import-button')?.textContent).toContain('Importar');
   });
 
   it('should change the central title when another library is chosen', async () => {
@@ -60,6 +68,7 @@ describe('App', () => {
     element.querySelector<HTMLButtonElement>('.diagnostics')!.click();
     await fixture.whenStable();
     expect(element.querySelector('main h1')?.textContent).toContain('Diagnóstico');
+    expect(element.querySelector('main .import-button')).toBeNull();
     expect(element.querySelector('main')?.textContent).toContain('Probar conexión con Rust');
     expect(element.querySelector('main section[aria-label="Prueba del motor multimedia"]')).not.toBeNull();
   });

@@ -4,7 +4,10 @@
     <p class="eyebrow">Biblioteca</p>
     <h1>{{ library().name }}</h1>
   </div>
+  <button type="button" class="import-button" (click)="openImport()">Importar</button>
 </header>
+
+<app-import-panel />
 
 <div class="library-content">
   <app-empty-state

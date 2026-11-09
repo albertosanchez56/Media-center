@@ -19,6 +19,7 @@
     "@angular/core": "^22.2.0",
     "@angular/platform-browser": "^22.2.0",
     "@tauri-apps/api": "^2.12.4",
+    "@tauri-apps/plugin-dialog": "2.8.4",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0"
   },
