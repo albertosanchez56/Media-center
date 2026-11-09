@@ -1,4 +1,5 @@
 //! Rutas de la aplicación. No crea la base de datos ni la carpeta multimedia.
+//! La base la abre el módulo `db`, en el archivo `library.db` de estas rutas.
 
 use serde::{Deserialize, Serialize};
 use std::fs::{self, OpenOptions};

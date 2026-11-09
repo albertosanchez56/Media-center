@@ -12,7 +12,7 @@ Los términos de producto están definidos en [PROJECT.md](PROJECT.md). Cada req
 | Pendiente | Hace falta una decisión antes de implementarlo |
 | Futuro | Queda fuera de la primera versión |
 
-El esquema de [DATABASE.md](DATABASE.md) que da forma a estos requisitos está aprobado (DC-18). La base todavía no está creada.
+El esquema de [DATABASE.md](DATABASE.md) que da forma a estos requisitos está aprobado (DC-18). La migración 1 crea la base al arrancar.
 
 ## 1. Bibliotecas
 

@@ -5,7 +5,7 @@ Estado del documento: registro vivo. El esquema inicial quedó aprobado el 2026-
 
 Una decisión confirmada se respeta al implementar. Una decisión pendiente no se da por cerrada dentro del código ni de otros documentos. Si dos documentos discrepan, se anota aquí antes de implementar.
 
-El esquema inicial de [DATABASE.md](DATABASE.md) está aprobado en DC-18. Las rutas están aprobadas en DC-22. Las tablas se crearán en F2.2. Las decisiones que no bloquean esa migración siguen pendientes y no quedan aprobadas por el esquema.
+El esquema inicial de [DATABASE.md](DATABASE.md) está aprobado en DC-18. Las rutas están aprobadas en DC-22. La migración 1 crea esas tablas desde F2.2. Las decisiones que no bloquean esa migración siguen pendientes y no quedan aprobadas por el esquema.
 
 ## Cómo se registra una decisión
 
@@ -150,7 +150,7 @@ Estados: confirmada, pendiente, prevista, descartada.
 - **Fecha:** 2026-11-09
 - **Estado:** confirmada. Cierra DP-17 en la tarea F0.2
 - **Decisión:** El esquema de [DATABASE.md](DATABASE.md) es el esquema inicial aprobado. Separa archivo físico, ficha y vínculo. Admite referencias externas desde la primera migración. Las playlists permiten elementos repetidos y su biblioteca es anulable para listas mixtas futuras. La primera versión solo crea playlists de una biblioteca. Cada elemento de descarga guarda su estado. El lote guarda `cancel_requested`. El porcentaje de progreso no se persiste. `content_hash` puede calcularse bajo demanda o en segundo plano y no es obligatorio al importar. Antes de eliminar el original de un movimiento, el contenido del destino tiene que coincidir con el del origen; el tamaño y la fecha no bastan, y ante cualquier incertidumbre el original se conserva. Si el borrado físico de una imagen gestionada falla después de confirmar SQLite, la ficha no se deshace y no se eliminan otros archivos.
-- **Consecuencias:** F0.2 queda hecha. No se crea la base ni la migración en esta tarea. Las rutas quedaron después en DC-22. F2.2 sigue sin empezar. Categorías y colecciones siguen fuera de la primera migración (DC-16). No cierran DP-02, DP-03, DP-05, DP-06, DP-07, DP-10, DP-11, DP-12, DP-13, DP-14, DP-15, DP-16, DP-19 ni DP-20.
+- **Consecuencias:** F0.2 queda hecha. No se crea la base ni la migración en esta tarea. Las rutas quedaron después en DC-22. F2.2 crea la base con esa migración. F2.3 no ha empezado. Categorías y colecciones siguen fuera de la primera migración (DC-16). No cierran DP-02, DP-03, DP-05, DP-06, DP-07, DP-10, DP-11, DP-12, DP-13, DP-14, DP-15, DP-16, DP-19 ni DP-20.
 
 ### DC-19 La importación puede recordar una ruta externa
 
@@ -183,7 +183,7 @@ Estados: confirmada, pendiente, prevista, descartada.
   - Los temporales que el diario tiene que recuperar viven en `.media-center\incoming`, dentro de la carpeta multimedia y en su mismo volumen. Los restos desechables van a `{temporal del sistema}\{identifier}`.
   - Desinstalar no borra la carpeta multimedia ni, por defecto, el directorio local. Borrar los datos internos durante la desinstalación queda para la fase de distribución, como opción explícita.
   - Una copia del catálogo necesita una instantánea consistente de la base, con el WAL incorporado, más `images` y `storage.json`. Restaurar el catálogo devuelve esos tres elementos juntos. Los archivos multimedia se respaldan aparte, copiando la carpeta administrada. F2.1 no implementa la copia ni la restauración.
-  - F2.2 sigue sin empezar: no hay base ni migración. `.gitignore` mantiene `library/`, `downloads/` y `data/` como red de seguridad. La aplicación no las usa.
+  - F2.2 crea `library.db` en ese directorio local, con la migración 1. El identificador de desarrollo y el de producción no comparten el archivo. `.gitignore` mantiene `library/`, `downloads/` y `data/` como red de seguridad. La aplicación no las usa.
 
 ## Decisiones pendientes
 
@@ -366,10 +366,10 @@ Estados: confirmada, pendiente, prevista, descartada.
 
 - **Fecha:** 2026-11-04
 - **Estado:** cerrada el 2026-11-09 en F0.2, con la aprobación del usuario. El esquema queda recogido en DC-18 y en [DATABASE.md](DATABASE.md). La entrada se conserva aquí con su historial
-- **Bloqueaba:** F0.2 y F2.2. F0.2 ya no está bloqueada. Las rutas quedaron en DC-22 y F2.2 sigue sin empezar
+- **Bloqueaba:** F0.2 y F2.2. F0.2 ya no está bloqueada. Las rutas quedaron en DC-22 y F2.2 ya creó la migración
 - **Qué hay que elegir:** Las respuestas a las preguntas finales de [DATABASE.md](DATABASE.md), incluida la aceptación explícita de archivos físicos separados, lotes, diario de operaciones y apariciones repetidas.
 - **Consecuencias de dejarla abierta:** No hay tablas definitivas y no se genera la migración inicial. La segunda revisión de la documentación no cierra esta decisión.
-- **Resolución:** se aprueba el esquema de DC-18. No se crea la base ni la migración en F0.2. Las rutas quedaron después en DC-22. Las decisiones que no bloquean la primera migración siguen pendientes.
+- **Resolución:** se aprueba el esquema de DC-18. No se crea la base ni la migración en F0.2. Las rutas quedaron después en DC-22 y la migración se crea en F2.2. Las decisiones que no bloquean la primera migración siguen pendientes.
 
 ### DP-18 Varias fichas para un mismo archivo físico
 

@@ -3,7 +3,7 @@
 Estado del documento: esquema inicial aprobado el 2026-11-09 (DC-18).  
 Última actualización: 2026-11-09.
 
-Este documento es el esquema de la primera migración. Las rutas están decididas en DC-22. Las tablas no están creadas: falta la tarea F2.2. No se modifica una migración ya aplicada. Categorías y colecciones llegan después, en tablas nuevas (DC-16).
+Este documento es el esquema de la primera migración. Las rutas están decididas en DC-22. La migración 1 está en `src-tauri/migrations/0001_initial.sql` y crea estas tablas al arrancar. No se modifica una migración ya aplicada. Categorías y colecciones llegan después, en tablas nuevas (DC-16).
 
 Los requisitos están en [REQUIREMENTS.md](REQUIREMENTS.md). Las decisiones cerradas y las que siguen abiertas están en [DECISIONS.md](DECISIONS.md). El procedimiento que el diario tiene que poder recuperar está en [ARCHITECTURE.md](ARCHITECTURE.md).
 
@@ -72,7 +72,7 @@ Artista, álbum y género son texto en la ficha. Normalizarlos en tablas propias
 
 La primera migración crea las tablas de este documento como tablas `STRICT`. `id` es una clave entera autogenerada. Las fechas se guardan en texto ISO-8601 UTC.
 
-Cada conexión abre con claves foráneas activas, diario WAL, `synchronous = FULL` y un tiempo de espera si la base está ocupada. El diario de una operación se confirma con esa sincronización antes de renombrar o copiar el origen.
+Cada conexión abre con claves foráneas activas, diario WAL, `synchronous = FULL` y una espera de 5 segundos si la base está ocupada. Esos ajustes se aplican en cada conexión, antes de iniciar transacciones. Si `schema_migrations` contiene una versión posterior a las que conoce la aplicación, el arranque se detiene y el archivo no se modifica. El diario de una operación se confirma con esa sincronización antes de renombrar o copiar el origen.
 
 Las migraciones son SQL numerado, embebido en la aplicación. Cada una se aplica en una transacción y se registra en `schema_migrations`. Cambiar un enumerado de un `CHECK` más adelante exige una migración que reconstruya la tabla y lo deje documentado.
 
@@ -113,6 +113,8 @@ La aplicación valida que `path` sea relativa cuando `storage` es `managed` y ab
 Una fila `external` no se mueve, no se renombra y no se borra por una operación de la aplicación. La importación por referencia no crea fila en `file_operations`.
 
 `content_hash` se rellena bajo demanda o en segundo plano. El alta de una película grande no espera a esa huella. El algoritmo concreto sigue sin fijarse; la columna no cambia cuando se elija. La comparación de contenido que autoriza borrar un original puede calcular la huella en ese momento y guardarla aquí.
+
+`file_id` se guarda como texto. El identificador del volumen no tiene un ancho entero fijo: en NTFS puede ocupar 64 o 128 bits.
 
 El enlace de una descarga no se guarda en esta tabla. Vive en `download_jobs`.
 

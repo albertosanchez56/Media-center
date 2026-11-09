@@ -128,7 +128,7 @@ Objetivo: crear la base aprobada, en una ruta decidida, mediante migraciones.
 
 ### F2.2 Aplicar la primera migración
 
-- **Estado:** pendiente
+- **Estado:** hecha el 2026-11-09. La migración 1 crea el esquema aprobado en el `library.db` del directorio local. Una migración posterior de prueba queda solo en las pruebas y no se publica
 - **Depende de:** F0.2 y F2.1
 - **Descripción:** Crear el módulo de acceso a SQLite y la migración inicial con las tablas aprobadas.
 - **Criterios de aceptación:**
@@ -630,9 +630,9 @@ Podrán entrar en una hoja de ruta posterior cuando se decida abordarlas.
 
 ## Orden recomendado
 
-1. La documentación de planificación queda en F0.1, F0.2, F0.3 y F0.4. El esquema inicial está aprobado y la migración todavía no existe.
+1. La documentación de planificación queda en F0.1, F0.2, F0.3 y F0.4. El esquema inicial está aprobado y la migración 1 ya está creada.
 2. La fase 1 está hecha: ventana, puente, armazón e integración de libmpv dentro del proceso (DC-17).
-3. F2.1 está hecha. Construir el resto de la persistencia, desde F2.2, cuando se autorice. El esquema y las rutas ya no la bloquean.
+3. F2.1 y F2.2 están hechas. F2.3 no ha empezado.
 4. Importar, consultar, editar y crear playlists (fases 3 a 6).
 5. Completar la reproducción y el vídeo asociado (fases 7 y 8) con la integración ya elegida.
 6. Añadir la reconciliación de archivos y las descargas por lotes (fases 9 y 10).

@@ -411,7 +411,7 @@ Pruebas esenciales: las siete se ejecutaron en A y en B. Todas pasaron salvo la 
 | [PROJECT.md](PROJECT.md) | Redactado y revisado | Visión, alcance y vocabulario de archivo, ficha y lote |
 | [REQUIREMENTS.md](REQUIREMENTS.md) | Redactado y revisado | Confirmado, previsto, pendiente y futuro |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Redactado y revisado | Incluye el motor experimental de F1.4 y F1.5 y la organización del motor del producto para F7.1 |
-| [DATABASE.md](DATABASE.md) | Esquema inicial aprobado el 2026-11-09 | No crear la base ni la migración hasta F2.2. Las rutas ya están en DC-22 |
+| [DATABASE.md](DATABASE.md) | Esquema inicial aprobado y migración 1 creada el 2026-11-09 | La base se abre al arrancar, en el directorio local del identificador |
 | [ROADMAP.md](ROADMAP.md) | Redactado y revisado | Fase 1 hecha (F1.1 a F1.5) |
 | [DECISIONS.md](DECISIONS.md) | Redactado y revisado | Confirmadas y pendientes |
 | [PROGRESS.md](PROGRESS.md) | Actualizado | Este documento |
@@ -422,7 +422,7 @@ Pruebas esenciales: las siete se ejecutaron en A y en B. Todas pasaron salvo la 
 | --- | --- | --- |
 | 0 | Cerrar la planificación | Hecha. F0.1, F0.2, F0.3 y F0.4 completadas. El esquema inicial está aprobado |
 | 1 | Esqueleto e integración inicial de libmpv | Hecha. F1.1 a F1.5 completadas; libmpv dentro del proceso elegido en DC-17 |
-| 2 | Persistencia | F2.1 hecha el 2026-11-09. F2.2 y F2.3 no han empezado. El esquema y las rutas ya no bloquean la migración |
+| 2 | Persistencia | F2.1 y F2.2 hechas el 2026-11-09. F2.3 no ha empezado |
 | 3 | Importación | No iniciada. La segunda ficha por archivo está confirmada (DC-21) y se implementa en F3.5, después de F3.2 |
 | 4 | Consulta de la biblioteca | No iniciada |
 | 5 | Edición de metadatos e imágenes | No iniciada |
@@ -458,7 +458,7 @@ Decisiones ya cerradas: extracción de portadas (DC-12), datos propios de cada f
 
 ## Siguiente paso
 
-La fase 0, la fase 1 y F2.1 están cerradas. F2.1 deja decididas las rutas y no crea la base, la migración ni la carpeta multimedia. El trabajo se detiene antes de F2.2. F7.1 no empieza: depende además de F3.2.
+La fase 0, la fase 1, F2.1 y F2.2 están cerradas. F2.2 crea la base con la migración 1 y no implementa ajustes, importación ni descargas. El trabajo se detiene antes de F2.3. F7.1 no empieza: depende además de F3.2.
 
 ## Historial
 
@@ -476,3 +476,4 @@ La fase 0, la fase 1 y F2.1 están cerradas. F2.1 deja decididas las rutas y no 
 | 2026-11-06 | F1.5 hecha tras la aprobación de sus resultados. DP-01 cerrada en DC-17: libmpv dentro del proceso (A). B descartada como solución principal y conservada por ahora en el diagnóstico. El recuadro negro con audio solo queda como defecto aceptado, con un criterio obligatorio en F7.1. DP-20 sigue pendiente: la DLL de desarrollo no está aprobada para distribuirse. |
 | 2026-11-09 | F0.2 hecha. Esquema inicial de SQLite aprobado en DC-18. Cierran también DP-04 (DC-19), DP-08 (DC-20) y DP-18 (DC-21). No se crea la base ni la migración. El trabajo se detiene antes de F2.1. |
 | 2026-11-09 | F2.1 hecha. Rutas aprobadas en DC-22. El directorio local de Tauri guarda la base, las imágenes y la configuración. La carpeta multimedia queda propuesta y no se crea. `tauri dev` usa un identificador distinto. No empieza F2.2. |
+| 2026-11-09 | F2.2 hecha. La migración 1 crea el esquema aprobado en el `library.db` del directorio local del identificador en ejecución. Las pruebas usan bases temporales. No empieza F2.3. |

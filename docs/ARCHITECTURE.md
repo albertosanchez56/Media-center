@@ -3,7 +3,7 @@
 Estado del documento: propuesta de estructura, con la segunda revisión aplicada. La sección «Interfaz Angular implementada» describe el código que existe tras F1.3, «Motor experimental de F1.4 y F1.5» el estudio de libmpv, y «Organización del motor del producto» lo que se construirá en F7.1.  
 Última actualización: 2026-11-09.
 
-Este documento reparte responsabilidades entre la interfaz, la lógica y los datos. El procedimiento de copia y movimiento y la extracción de portadas están confirmados en [DECISIONS.md](DECISIONS.md). La integración de libmpv está elegida (DC-17). El esquema inicial de SQLite está aprobado (DC-18) en [DATABASE.md](DATABASE.md) y todavía no está creado. Las rutas están decididas (DC-22). La herramienta de etiquetas sigue abierta.
+Este documento reparte responsabilidades entre la interfaz, la lógica y los datos. El procedimiento de copia y movimiento y la extracción de portadas están confirmados en [DECISIONS.md](DECISIONS.md). La integración de libmpv está elegida (DC-17). El esquema inicial de SQLite está aprobado (DC-18) en [DATABASE.md](DATABASE.md) y la migración 1 lo crea al arrancar. Las rutas están decididas (DC-22). La herramienta de etiquetas sigue abierta. Angular no ejecuta SQL.
 
 ## Vista general
 
@@ -49,13 +49,13 @@ docs/           Documentación de producto
 
 Angular compila en `dist/media-center/browser`. Tauri carga esa misma ruta (`frontendDist`) en la versión compilada, y `http://localhost:4200` (`devUrl`) durante el desarrollo. No se crea un segundo proyecto para probar libmpv: la integración se estudia en esta misma aplicación.
 
-Las carpetas `library/`, `downloads/` y `data/` de la raíz están ignoradas por Git para no versionar material local. Su existencia en `.gitignore` no decide todavía dónde guardará los datos la aplicación instalada.
+Las carpetas `library/`, `downloads/` y `data/` de la raíz están ignoradas por Git para no versionar material local. No son la ruta de la aplicación: los datos viven en el directorio local de Tauri (DC-22).
 
 El instalador de Windows es el empaquetado de esta aplicación de escritorio. No añade un servidor. Su formato y la inclusión de libmpv, FFmpeg y yt-dlp están pendientes en [DECISIONS.md](DECISIONS.md).
 
 ## Interfaz Angular implementada
 
-Esta sección describe el código que existe después de F1.3. La interfaz es un armazón visual: no hay biblioteca, importación, reproducción ni base de datos detrás.
+Esta sección describe el código que existe después de F1.3. La interfaz es un armazón visual: no hay biblioteca, importación ni reproducción. Angular no ejecuta SQL. Rust abre la base al arrancar.
 
 Angular 22 funciona sin zonas (`zoneless`). Todos los componentes son standalone, usan `ChangeDetectionStrategy.OnPush` y guardan su estado en signals. No se usan `@angular/router` ni `@angular/forms`.
 
@@ -461,7 +461,7 @@ Las rutas están decididas en DC-22. El directorio local de Tauri guarda la base
 
 Una copia del catálogo reúne una instantánea consistente de la base, con el WAL ya incorporado, la carpeta `images` y `storage.json`. Restaurar el catálogo devuelve esos tres elementos juntos. Los archivos multimedia se respaldan copiando la carpeta administrada. Esta tarea no implementa la copia ni la restauración.
 
-Desinstalar no borra la carpeta multimedia ni, por defecto, el directorio local. Borrar los datos internos en la desinstalación queda como opción explícita de la fase de distribución. [DATABASE.md](DATABASE.md) fija los registros. Esas tablas no están creadas.
+Desinstalar no borra la carpeta multimedia ni, por defecto, el directorio local. Borrar los datos internos en la desinstalación queda como opción explícita de la fase de distribución. [DATABASE.md](DATABASE.md) fija los registros. La migración 1 ya los crea.
 
 ## Límites de la primera versión
 
@@ -481,4 +481,4 @@ Desinstalar no borra la carpeta multimedia ni, por defecto, el directorio local.
 | Identidad de un archivo movido | Sin un criterio estable, un renombre puede desenganchar las fichas o crear otra ficha sin querer | Decisión de identidad, antes de la reconciliación |
 | Operación de archivo interrumpida | Un movimiento a medias podría perder el original | El diario y la recuperación de este documento. No se borra el original con incertidumbre |
 | Procesos externos de yt-dlp y FFmpeg | Hace falta localizarlos, limitar el tiempo de espera y explicar un fallo sin dañar la biblioteca | Primera tarea del descargador. Empaquetarlos o exigirlos en la instalación sigue pendiente |
-| Esquema de datos aprobado tarde | Cambiar tablas ya usadas obliga a migrar | Esquema aprobado en F0.2 (DC-18) y rutas en F2.1 (DC-22), antes de crear la base. La migración es F2.2 |
+| Esquema de datos aprobado tarde | Cambiar tablas ya usadas obliga a migrar | Esquema aprobado en F0.2 (DC-18), rutas en F2.1 (DC-22) y migración inicial aplicada en F2.2 |

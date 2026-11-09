@@ -5,7 +5,7 @@ Estado del documento: planificación inicial, con el esquema de datos aprobado.
 
 Este documento describe qué es Media Center, a quién se dirige la primera versión y qué queda fuera de ella. Los requisitos detallados están en [REQUIREMENTS.md](REQUIREMENTS.md). Las decisiones cerradas y las que siguen abiertas están en [DECISIONS.md](DECISIONS.md).
 
-El esquema de SQLite descrito en [DATABASE.md](DATABASE.md) está aprobado (DC-18). La base y la migración no están creadas. La persistencia no ha empezado.
+El esquema de SQLite descrito en [DATABASE.md](DATABASE.md) está aprobado (DC-18). La migración 1 crea la base al arrancar. F2.3, la importación y el resto de la persistencia no han empezado.
 
 ## Qué es
 
@@ -36,7 +36,7 @@ Forman parte de la dirección del producto, con el detalle todavía abierto:
 - Categorías personalizadas.
 - Colecciones, como concepto distinto de las playlists.
 - Escritura opcional de etiquetas dentro de archivos compatibles.
-- Usar un mismo archivo físico en varias bibliotecas. El modelo de datos lo puede expresar; la función todavía no está confirmada.
+- Usar un mismo archivo físico en varias bibliotecas. Está confirmado (DC-21) y se implementa en F3.5.
 
 El diseño visual concreto se definirá por etapas. La estructura general de la ventana sí está descrita en los requisitos: menú lateral, zona central, panel derecho de reproducción musical y controles globales.
 
@@ -71,7 +71,7 @@ Una aplicación móvil con streaming necesitaría un punto de conexión en el or
 | --- | --- | --- |
 | Angular y TypeScript | Interfaz | Elegida |
 | Tauri 2 y Rust | Aplicación de escritorio, archivos, procesos y persistencia | Elegida |
-| SQLite | Biblioteca y metadatos | Elegida. El esquema inicial está aprobado (DC-18). La base todavía no está creada |
+| SQLite | Biblioteca y metadatos | Elegida. El esquema inicial está aprobado (DC-18) y la migración 1 lo crea al arrancar |
 | libmpv | Motor multimedia | Elegido e integrado dentro del proceso de la aplicación (DC-17, F1.5). Falta decidir cómo viaja en el instalador |
 | yt-dlp y FFmpeg | Descargas autorizadas | Elegidos como herramientas. Falta decidir si viajan dentro del instalador |
 | Lector y editor de etiquetas | Leer metadatos y portadas y, de forma opcional, escribir etiquetas | La extracción de portadas está confirmada. La herramienta concreta sigue pendiente |
@@ -111,7 +111,7 @@ Estos términos se usan con el mismo significado en el resto de la documentació
 | --- | --- |
 | [REQUIREMENTS.md](REQUIREMENTS.md) | Requisitos confirmados, previstos y pendientes |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Estructura prevista de la aplicación y procedimientos de archivos |
-| [DATABASE.md](DATABASE.md) | Esquema inicial aprobado. La migración no está creada |
+| [DATABASE.md](DATABASE.md) | Esquema inicial aprobado. La migración 1 está creada |
 | [ROADMAP.md](ROADMAP.md) | Fases, tareas y criterios de aceptación |
 | [DECISIONS.md](DECISIONS.md) | Decisiones confirmadas y decisiones abiertas |
 | [PROGRESS.md](PROGRESS.md) | Estado de avance |
