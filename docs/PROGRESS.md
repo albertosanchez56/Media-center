@@ -422,7 +422,7 @@ Pruebas esenciales: las siete se ejecutaron en A y en B. Todas pasaron salvo la 
 | --- | --- | --- |
 | 0 | Cerrar la planificación | Hecha. F0.1, F0.2, F0.3 y F0.4 completadas. El esquema inicial está aprobado |
 | 1 | Esqueleto e integración inicial de libmpv | Hecha. F1.1 a F1.5 completadas; libmpv dentro del proceso elegido en DC-17 |
-| 2 | Persistencia | F2.1 y F2.2 hechas el 2026-11-09. F2.3 no ha empezado |
+| 2 | Persistencia | F2.1, F2.2 y F2.3 hechas el 2026-11-09 |
 | 3 | Importación | No iniciada. La segunda ficha por archivo está confirmada (DC-21) y se implementa en F3.5, después de F3.2 |
 | 4 | Consulta de la biblioteca | No iniciada |
 | 5 | Edición de metadatos e imágenes | No iniciada |
@@ -458,7 +458,7 @@ Decisiones ya cerradas: extracción de portadas (DC-12), datos propios de cada f
 
 ## Siguiente paso
 
-La fase 0, la fase 1, F2.1 y F2.2 están cerradas. F2.2 crea la base con la migración 1 y no implementa ajustes, importación ni descargas. El trabajo se detiene antes de F2.3. F7.1 no empieza: depende además de F3.2.
+La fase 0, la fase 1 y la fase 2 están cerradas. F2.3 guarda el volumen en `app_settings` y no lo aplica al reproductor. El trabajo se detiene antes de F3.1. F7.1 no empieza: depende además de F3.2.
 
 ## Historial
 
@@ -477,3 +477,4 @@ La fase 0, la fase 1, F2.1 y F2.2 están cerradas. F2.2 crea la base con la migr
 | 2026-11-09 | F0.2 hecha. Esquema inicial de SQLite aprobado en DC-18. Cierran también DP-04 (DC-19), DP-08 (DC-20) y DP-18 (DC-21). No se crea la base ni la migración. El trabajo se detiene antes de F2.1. |
 | 2026-11-09 | F2.1 hecha. Rutas aprobadas en DC-22. El directorio local de Tauri guarda la base, las imágenes y la configuración. La carpeta multimedia queda propuesta y no se crea. `tauri dev` usa un identificador distinto. No empieza F2.2. |
 | 2026-11-09 | F2.2 hecha. La migración 1 crea el esquema aprobado en el `library.db` del directorio local del identificador en ejecución. Las pruebas usan bases temporales. No empieza F2.3. |
+| 2026-11-09 | F2.3 hecha. El volumen se lee y se guarda en `app_settings`, de 0 a 100, con 100 si no hay fila. Un valor ilegible se conserva y no se escribe en `storage.json`. No se aplica al reproductor. No empieza F3.1. |

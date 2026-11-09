@@ -1,6 +1,7 @@
 //! Base de datos SQLite. Angular no ejecuta SQL: solo este módulo abre `library.db`.
 
 mod migrations;
+mod settings;
 
 use rusqlite::{Connection, ErrorCode};
 use std::path::{Path, PathBuf};

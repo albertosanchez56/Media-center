@@ -139,7 +139,7 @@ Objetivo: crear la base aprobada, en una ruta decidida, mediante migraciones.
 
 ### F2.3 Ajustes locales mínimos
 
-- **Estado:** bloqueada
+- **Estado:** hecha el 2026-11-09. El volumen se guarda en `app_settings`, con la clave `volume`, de 0 a 100. Si no hay fila, el valor es 100. No se lee al arrancar ni se muestra en la interfaz
 - **Depende de:** F2.2
 - **Descripción:** Leer y guardar un ajuste sencillo, como el volumen, en la tabla de ajustes aprobada.
 - **Criterios de aceptación:**
@@ -632,7 +632,7 @@ Podrán entrar en una hoja de ruta posterior cuando se decida abordarlas.
 
 1. La documentación de planificación queda en F0.1, F0.2, F0.3 y F0.4. El esquema inicial está aprobado y la migración 1 ya está creada.
 2. La fase 1 está hecha: ventana, puente, armazón e integración de libmpv dentro del proceso (DC-17).
-3. F2.1 y F2.2 están hechas. F2.3 no ha empezado.
+3. F2.1, F2.2 y F2.3 están hechas. La importación no ha empezado.
 4. Importar, consultar, editar y crear playlists (fases 3 a 6).
 5. Completar la reproducción y el vídeo asociado (fases 7 y 8) con la integración ya elegida.
 6. Añadir la reconciliación de archivos y las descargas por lotes (fases 9 y 10).
