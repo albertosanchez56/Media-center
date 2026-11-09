@@ -423,7 +423,7 @@ Pruebas esenciales: las siete se ejecutaron en A y en B. Todas pasaron salvo la 
 | 0 | Cerrar la planificación | Hecha. F0.1, F0.2, F0.3 y F0.4 completadas. El esquema inicial está aprobado |
 | 1 | Esqueleto e integración inicial de libmpv | Hecha. F1.1 a F1.5 completadas; libmpv dentro del proceso elegido en DC-17 |
 | 2 | Persistencia | F2.1, F2.2 y F2.3 hechas el 2026-11-09 |
-| 3 | Importación | F3.1 hecha el 2026-11-09. La selección no copia archivos ni crea fichas. F3.2 no ha empezado. La segunda ficha por archivo está confirmada (DC-21) y se implementa en F3.5, después de F3.2 |
+| 3 | Importación | F3.1 y F3.2 hechas el 2026-11-09. Copiar y mover dejan el archivo en la carpeta administrada y crean la ficha principal. El movimiento usa copia y SHA-256, no un renombrado directo, porque el diario no guarda la identidad del archivo ni la del volumen y la migración 1 no se ha cambiado. Una fila `rename` queda en revisión y no borra nada. Las subcarpetas no se importan: esa decisión sigue pendiente. La segunda ficha es F3.5. No empieza F3.3 |
 | 4 | Consulta de la biblioteca | No iniciada |
 | 5 | Edición de metadatos e imágenes | No iniciada |
 | 6 | Playlists | No iniciada. Colecciones y categorías bloqueadas |
@@ -458,7 +458,7 @@ Decisiones ya cerradas: extracción de portadas (DC-12), datos propios de cada f
 
 ## Siguiente paso
 
-La fase 0, la fase 1 y la fase 2 están cerradas. F3.1 guarda en memoria los archivos o la carpeta elegidos y la biblioteca de destino. No los copia ni crea fichas. El trabajo se detiene antes de F3.2. F7.1 no empieza: depende además de F3.2.
+La fase 0, la fase 1 y la fase 2 están cerradas. F3.1 elige archivos o una carpeta y la biblioteca de destino. F3.2 copia o mueve esa selección, registra la ficha y no lee etiquetas ni portadas. El trabajo se detiene antes de F3.3. La lista de la biblioteca sigue en F4.1.
 
 ## Historial
 
@@ -479,3 +479,5 @@ La fase 0, la fase 1 y la fase 2 están cerradas. F3.1 guarda en memoria los arc
 | 2026-11-09 | F2.2 hecha. La migración 1 crea el esquema aprobado en el `library.db` del directorio local del identificador en ejecución. Las pruebas usan bases temporales. No empieza F2.3. |
 | 2026-11-09 | F2.3 hecha. El volumen se lee y se guarda en `app_settings`, de 0 a 100, con 100 si no hay fila. Un valor ilegible se conserva y no se escribe en `storage.json`. No se aplica al reproductor. No empieza F3.1. |
 | 2026-11-09 | F3.1 hecha. Importar, en las tres bibliotecas, abre el diálogo nativo para varios archivos o una carpeta. La biblioteca de destino es explícita y la selección queda en memoria. Cancelar no la borra si ya había una válida. No se copian archivos, no se crean fichas y no empieza F3.2. |
+| 2026-11-09 | F3.2 hecha. Copiar conserva el original y mover lo retira solo después de SHA-256, con el mismo manejador abierto. No se usa el renombrado directo porque el diario no guarda la identidad del archivo ni la del volumen; la migración 1 no se modifica. Un destino ocupado no se sobrescribe. Las subcarpetas quedan pendientes de decidir y la interfaz lo dice. No empieza F3.3. |
+| 2026-11-09 | Comprobación manual de F3.2 con `clip.mp4` desechable. Copiar dejó el original, publicó la copia en la carpeta de desarrollo y creó una ficha en su `library.db`. La biblioteca de producción no se tocó. Al terminar, la carpeta pasa a mostrarse como confirmada. |

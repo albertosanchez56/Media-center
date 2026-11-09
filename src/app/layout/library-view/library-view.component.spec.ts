@@ -1,5 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { FileDialog } from '../../import/file-dialog';
+import { ImportTransport } from '../../import/import-transport';
 import { LIBRARIES } from '../../navigation/navigation';
 import { LibraryViewComponent } from './library-view.component';
 
@@ -21,7 +22,18 @@ describe('LibraryViewComponent', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [LibraryViewComponent],
-      providers: [{ provide: FileDialog, useValue: dialog }],
+      providers: [
+        { provide: FileDialog, useValue: dialog },
+        {
+          provide: ImportTransport,
+          useValue: {
+            folderStatus: () => Promise.resolve({ path: 'C:\\Biblioteca', state: 'proposed' }),
+            start: () => Promise.resolve(),
+            cancel: () => Promise.resolve(),
+            listen: () => Promise.resolve(() => undefined),
+          },
+        },
+      ],
     }).compileComponents();
   });
 

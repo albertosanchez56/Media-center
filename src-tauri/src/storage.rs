@@ -231,8 +231,7 @@ pub fn resolve_state(config: &ManagedFolderConfig) -> ManagedFolderState {
 }
 
 /// Crea la carpeta solo como consecuencia de una confirmación explícita.
-/// La interfaz y la importación la llamarán más adelante; el arranque no.
-#[allow(dead_code)]
+/// El arranque no la llama. La importación sí, cuando la persona pulsa Copiar o Mover.
 pub fn confirm_managed_folder(
     storage_file: &Path,
     candidate: &Path,
@@ -493,7 +492,7 @@ fn windows_normalized_path(path: &Path) -> PathBuf {
 }
 
 #[cfg(windows)]
-fn is_reparse_point(path: &Path) -> bool {
+pub(crate) fn is_reparse_point(path: &Path) -> bool {
     use std::os::windows::ffi::OsStrExt;
     use windows::Win32::Storage::FileSystem::{
         FILE_ATTRIBUTE_REPARSE_POINT, GetFileAttributesW, INVALID_FILE_ATTRIBUTES,
@@ -513,7 +512,7 @@ fn is_reparse_point(path: &Path) -> bool {
 }
 
 #[cfg(not(windows))]
-fn is_reparse_point(_path: &Path) -> bool {
+pub(crate) fn is_reparse_point(_path: &Path) -> bool {
     false
 }
 

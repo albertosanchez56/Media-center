@@ -124,3 +124,10 @@ li {
   color: var(--color-text-muted);
   font-size: var(--font-size-sm);
 }
+
+.results {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}

@@ -249,9 +249,9 @@ En la barra de iconos los textos siguen en el DOM, ocultos solo visualmente, y c
 - No hay datos reales: las bibliotecas y las playlists muestran siempre su estado vacío.
 - La barra inferior y el panel derecho no reproducen nada. Sus controles están deshabilitados.
 - Por debajo de 900 px el panel derecho no tiene alternativa. Conserva su área propia en la rejilla y su componente independiente para mostrarse más adelante como panel desplegable o vista alternativa, pero eso no está implementado.
-- No hay búsqueda, filtros, descargas ni ajustes en la interfaz. Desde F3.1, Música, Vídeos y Películas tienen un acceso Importar: elige archivos o una carpeta y la biblioteca de destino, y no copia ni guarda esa selección.
+- No hay búsqueda, filtros, descargas ni ajustes en la interfaz. Desde F3.2, Música, Vídeos y Películas tienen un acceso Importar: elige archivos o una carpeta, la biblioteca de destino, y puede copiar o mover. La lista de la biblioteca sigue vacía hasta F4.1. Las subcarpetas no se recorren; importarlas está pendiente de decidir.
 - No hay router: la navegación es el signal de `NavigationService`.
-- Las únicas llamadas a Rust son las del diagnóstico de desarrollo: el puente de F1.2 y el motor experimental de F1.4 y F1.5.
+- Las llamadas a Rust de la interfaz son el puente de diagnóstico, el motor experimental de desarrollo y, desde F3.2, el estado de la carpeta y la importación.
 
 ## Comunicación entre interfaz y Rust
 

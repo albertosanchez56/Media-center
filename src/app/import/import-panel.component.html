@@ -15,6 +15,7 @@
             name="destination-library"
             [value]="library.id"
             [checked]="session.library() === library.id"
+            [disabled]="session.running()"
             (change)="session.chooseLibrary(library.id)"
           />
           {{ library.name }}
@@ -23,13 +24,20 @@
     </div>
   </fieldset>
 
+  <p class="note">Carpeta: {{ folderLabel() }}</p>
+
   <div class="actions">
-    <button type="button" [disabled]="session.pending()" (click)="session.pick('files')">
+    <button type="button" [disabled]="session.pending() || session.running()" (click)="session.pick('files')">
       Elegir archivos
     </button>
-    <button type="button" [disabled]="session.pending()" (click)="session.pick('folder')">
+    <button type="button" [disabled]="session.pending() || session.running()" (click)="session.pick('folder')">
       Elegir carpeta
     </button>
+    <button type="button" [disabled]="!canImport()" (click)="session.copy()">Copiar</button>
+    <button type="button" [disabled]="!canImport()" (click)="session.move()">Mover</button>
+    @if (session.running()) {
+      <button type="button" (click)="session.cancel()">Cancelar importación</button>
+    }
   </div>
 
   @if (session.error(); as message) {
@@ -49,7 +57,32 @@
           </li>
         }
       </ul>
-      <p class="note">No se ha copiado ni registrado nada.</p>
+      @if (selection.kind === 'folder') {
+        <p class="note">
+          Solo se importan los archivos de esta carpeta. Las subcarpetas no se recorren.
+          La importación de subcarpetas está pendiente de decidir.
+        </p>
+      }
+      @if (session.results().length === 0) {
+        <p class="note">No se ha copiado ni registrado nada.</p>
+      }
+    </div>
+  }
+
+  @if (session.results().length > 0) {
+    <div class="results" aria-live="polite">
+      <h3>Resultado</h3>
+      <ul>
+        @for (item of session.results(); track item.source + item.state + item.message) {
+          <li>
+            <span class="path-name">{{ stateLabel(item) }}</span>
+            <span class="path-full" [title]="item.source">{{ item.message }}</span>
+          </li>
+        }
+      </ul>
+      @if (hasSavedCard()) {
+        <p class="note">La ficha queda guardada. La lista de la biblioteca se mostrará más adelante.</p>
+      }
     </div>
   }
 </section>

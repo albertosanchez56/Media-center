@@ -100,6 +100,32 @@ impl Database {
         }
         Ok(())
     }
+
+    pub fn with_connection<T>(
+        &self,
+        body: impl FnOnce(&mut Connection) -> Result<T, rusqlite::Error>,
+    ) -> Result<T, DatabaseError> {
+        let mut connection = self
+            .connection
+            .lock()
+            .unwrap_or_else(|error| error.into_inner());
+        body(&mut connection).map_err(|error| sqlite_error(&self.path, error))
+    }
+
+    #[cfg(test)]
+    pub fn try_with_connection<T>(
+        &self,
+        body: impl FnOnce(&mut Connection) -> Result<T, rusqlite::Error>,
+    ) -> Result<Option<T>, DatabaseError> {
+        let mut connection = match self.connection.try_lock() {
+            Ok(connection) => connection,
+            Err(std::sync::TryLockError::WouldBlock) => return Ok(None),
+            Err(std::sync::TryLockError::Poisoned(poison)) => poison.into_inner(),
+        };
+        body(&mut connection)
+            .map(Some)
+            .map_err(|error| sqlite_error(&self.path, error))
+    }
 }
 
 pub fn initialize(path: &Path) -> Result<Database, DatabaseError> {

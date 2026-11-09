@@ -7,7 +7,7 @@ Cada tarea es un incremento pequeño. No se inicia una tarea hasta cerrar las de
 
 Leyenda de estados: pendiente, bloqueada, en curso, hecha.
 
-Las tareas hechas de la fase 0 son documentación. F1.1 dejó una aplicación de escritorio vacía. F1.2 añadió un comando de prueba de Rust invocado desde la interfaz. F1.3 colocó el armazón visual de cuatro zonas sin datos reales. F1.4 y F1.5 estudiaron la integración de libmpv en el diagnóstico de desarrollo y eligieron libmpv dentro del proceso (DC-17). F3.1 permite elegir archivos o una carpeta y la biblioteca de destino, sin copiarlos ni guardarlos. No hay reproducción ni descargas para la persona usuaria.
+Las tareas hechas de la fase 0 son documentación. F1.1 dejó una aplicación de escritorio vacía. F1.2 añadió un comando de prueba de Rust invocado desde la interfaz. F1.3 colocó el armazón visual de cuatro zonas sin datos reales. F1.4 y F1.5 estudiaron la integración de libmpv en el diagnóstico de desarrollo y eligieron libmpv dentro del proceso (DC-17). F3.1 permite elegir archivos o una carpeta y la biblioteca de destino. F3.2 los copia o los mueve a la carpeta administrada y crea la ficha principal, sin leer etiquetas ni mostrar todavía la lista. No hay reproducción ni descargas para la persona usuaria.
 
 ## Fase 0 — Cerrar la planificación
 
@@ -162,7 +162,7 @@ Objetivo: incorporar archivos a la biblioteca elegida y crear su ficha, con el p
 
 ### F3.2 Copiar o mover a la carpeta administrada
 
-- **Estado:** bloqueada
+- **Estado:** hecha el 2026-11-09. Copiar y mover crean la ficha principal en la biblioteca elegida. El movimiento no renombra el original: el diario no puede guardar la identidad del archivo ni la del volumen sin cambiar la migración 1, así que se copia, se comprueba con SHA-256 y el original se borra solo mediante el manejador que se ha verificado. Una operación `rename` sin esa identidad queda en revisión y no borra nada. Las subcarpetas no se recorren; importarlas sigue pendiente de decidir
 - **Depende de:** F2.1, F2.2 y F3.1
 - **Descripción:** Ejecutar la operación elegida según DC-14 y registrar el archivo físico y la ficha principal.
 - **Criterios de aceptación:**
@@ -632,7 +632,7 @@ Podrán entrar en una hoja de ruta posterior cuando se decida abordarlas.
 
 1. La documentación de planificación queda en F0.1, F0.2, F0.3 y F0.4. El esquema inicial está aprobado y la migración 1 ya está creada.
 2. La fase 1 está hecha: ventana, puente, armazón e integración de libmpv dentro del proceso (DC-17).
-3. F2.1, F2.2 y F2.3 están hechas. F3.1 elige archivos y biblioteca. La copia y la ficha siguen en F3.2.
+3. F2.1, F2.2, F2.3, F3.1 y F3.2 están hechas. La ficha usa el nombre del archivo. Los metadatos y la portada siguen en F3.3. La lista de la biblioteca sigue en F4.1.
 4. Importar, consultar, editar y crear playlists (fases 3 a 6).
 5. Completar la reproducción y el vídeo asociado (fases 7 y 8) con la integración ya elegida.
 6. Añadir la reconciliación de archivos y las descargas por lotes (fases 9 y 10).

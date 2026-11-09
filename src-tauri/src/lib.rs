@@ -2,17 +2,23 @@ mod commands;
 mod db;
 #[cfg(all(debug_assertions, windows))]
 mod engine;
+mod import;
 mod storage;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    let builder = tauri::Builder::default().plugin(tauri_plugin_dialog::init());
+    let builder = tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
+        .manage(import::ImportRuntime::default());
 
     #[cfg(all(debug_assertions, windows))]
     let builder = builder
         .manage(engine::EngineManager::default())
         .invoke_handler(tauri::generate_handler![
             commands::bridge_check,
+            import::commands::import_folder_status,
+            import::commands::import_start,
+            import::commands::import_cancel,
             engine::commands::engine_open,
             engine::commands::engine_stop,
             engine::commands::engine_set_pause,
@@ -29,7 +35,12 @@ pub fn run() {
         ]);
 
     #[cfg(not(all(debug_assertions, windows)))]
-    let builder = builder.invoke_handler(tauri::generate_handler![commands::bridge_check]);
+    let builder = builder.invoke_handler(tauri::generate_handler![
+        commands::bridge_check,
+        import::commands::import_folder_status,
+        import::commands::import_start,
+        import::commands::import_cancel,
+    ]);
 
     let app = builder
         .setup(|app| {
@@ -48,7 +59,7 @@ pub fn run() {
                 eprintln!("{message}");
                 message
             })?;
-            let database_path = storage::InternalPaths::from_app_local_data(local).database;
+            let database_path = storage::InternalPaths::from_app_local_data(&local).database;
             let database = match db::initialize(&database_path) {
                 Ok(database) => database,
                 Err(error) => {
@@ -67,6 +78,11 @@ pub fn run() {
                 );
                 eprintln!("{message}");
                 return Err(message.into());
+            }
+            if let Err(error) = import::recover_on_startup(&database, &local) {
+                eprintln!(
+                    "No se han podido revisar las importaciones pendientes: {error}. No se borra ningún archivo."
+                );
             }
             app.manage(database);
             Ok(())
