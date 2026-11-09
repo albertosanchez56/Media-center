@@ -1,7 +1,7 @@
 # Media Center — Requisitos
 
-Estado del documento: planificación inicial, con la segunda revisión aplicada.  
-Última actualización: 2026-11-06.
+Estado del documento: planificación inicial, con el esquema de datos aprobado.  
+Última actualización: 2026-11-09.
 
 Los términos de producto están definidos en [PROJECT.md](PROJECT.md). Cada requisito lleva uno de estos estados:
 
@@ -12,7 +12,7 @@ Los términos de producto están definidos en [PROJECT.md](PROJECT.md). Cada req
 | Pendiente | Hace falta una decisión antes de implementarlo |
 | Futuro | Queda fuera de la primera versión |
 
-El esquema de [DATABASE.md](DATABASE.md) que da forma a estos requisitos sigue pendiente de aprobación.
+El esquema de [DATABASE.md](DATABASE.md) que da forma a estos requisitos está aprobado (DC-18). La base todavía no está creada.
 
 ## 1. Bibliotecas
 
@@ -28,20 +28,18 @@ El esquema de [DATABASE.md](DATABASE.md) que da forma a estos requisitos sigue p
 | B-08 | Se pueden crear playlists | Confirmado |
 | B-09 | Se pueden crear colecciones | Previsto. Falta definir en qué se diferencian de una playlist |
 | B-10 | Habrá categorías personalizadas | Previsto. Las reglas exactas están pendientes |
-| B-11 | Un mismo archivo físico puede tener fichas distintas, cada una con sus metadatos y sus imágenes | Pendiente de confirmación funcional. El modelo propuesto ya separa el archivo de las fichas para poder admitirlo |
+| B-11 | Un mismo archivo físico puede tener fichas distintas, cada una con sus metadatos y sus imágenes | Confirmado (DC-21). La importación crea una sola ficha. Ofrecer la segunda es F3.5 |
 
 ### Detalles pendientes de biblioteca
 
 - Qué campos cubren la búsqueda: título, artista, álbum, género, nombre de archivo u otros.
 - Qué filtros existen además de la biblioteca y el favorito.
-- Si una playlist puede mezclar fichas de distintas bibliotecas.
 - Si una colección es una saga, una agrupación sin orden de reproducción u otra cosa.
 - Si una ficha puede tener varias categorías, si las categorías son jerárquicas y si dependen de la biblioteca.
-- Si la persona usuaria podrá crear una segunda ficha, en otra biblioteca, sobre un archivo que ya está en la carpeta administrada.
 
-La propuesta de datos permite que la misma ficha aparezca varias veces en una playlist, cada vez con su posición. Esa forma pertenece al esquema todavía no aprobado.
+En la primera versión cada playlist pertenece a una biblioteca. El campo admite nulo para listas mixtas futuras, que no se ofrecen todavía. La misma ficha puede aparecer varias veces en una playlist, cada vez con su posición.
 
-Importar crea la ficha en la biblioteca elegida. Crear otra ficha para el mismo archivo es la función B-11 y no forma parte del comportamiento confirmado de la importación.
+Importar crea la ficha en la biblioteca elegida. Crear otra ficha para el mismo archivo es B-11 y no forma parte del alta de esa importación.
 
 ## 2. Reproducción
 
@@ -73,14 +71,14 @@ El trabajo de libmpv se hace dentro de Media Center. No se pide un proyecto de p
 | V-02 | Cualquier portada puede sustituirse | Confirmado |
 | V-03 | Una imagen personalizada permanece guardada con independencia de la portada extraída | Confirmado |
 | V-04 | Una canción, sea MP3, FLAC, MP4 u otro formato admitido, puede tener un vídeo asociado | Confirmado |
-| V-05 | Si hay un vídeo asociado, puede mostrarse en lugar de la portada o del vídeo original | Confirmado. Falta decidir si el cambio es automático o lo elige la persona usuaria en cada ficha |
+| V-05 | Si hay un vídeo asociado, puede mostrarse en lugar de la portada o del vídeo original | Confirmado (DC-20). Por defecto es automático: vídeo asociado, si no el vídeo del propio archivo, si no la portada. La persona puede elegir otra opción en la ficha |
 | V-06 | El audio que se oye es siempre el de la canción | Confirmado |
 | V-07 | El vídeo asociado se reproduce sin su propio sonido | Confirmado |
 | V-08 | El vídeo asociado sigue los controles de la canción, incluidos pausa, reanudación y cambio de posición | Confirmado |
 | V-09 | Si el vídeo asociado dura menos que la canción, se contempla reproducirlo en bucle | Pendiente. Está contemplado y todavía no está elegido |
 | V-10 | La sincronización y el renderizado se harán con la integración de libmpv que se documente antes de esta función | Confirmado: libmpv dentro del proceso (DC-17), con el vídeo asociado añadido a la misma sesión y saltos exactos. Viabilidad comprobada en F1.4 y F1.5. La función es avanzada y no está implementada: llega con F8.2 |
 
-Las imágenes y los metadatos personalizados pertenecen a la ficha. Dos fichas asociadas al mismo archivo físico, si B-11 llega a confirmarse, pueden mostrar portadas distintas.
+Las imágenes y los metadatos personalizados pertenecen a la ficha. Dos fichas del mismo archivo físico pueden mostrar portadas distintas. Eliminar una ficha no elimina el archivo físico. Si después falla el borrado de una imagen gestionada, la ficha confirmada no se deshace y no se borran otros archivos.
 
 ## 4. Importación
 
@@ -99,11 +97,11 @@ Las imágenes y los metadatos personalizados pertenecen a la ficha. Dos fichas a
 | I-11 | Una operación de copia o movimiento incompleta se puede recuperar | Confirmado |
 | I-12 | Con incertidumbre sobre el resultado, la aplicación no elimina el original de forma automática | Confirmado |
 
-En el mismo volumen se valora un movimiento directo y seguro, con un registro previo de la operación. Entre volúmenes distintos la aplicación copia a un archivo temporal, verifica la copia y solo después, con la operación completada, puede eliminar el original. El procedimiento también cubre un nombre ya ocupado, la falta de espacio, una interrupción y un fallo de SQLite.
+En el mismo volumen se valora un movimiento directo y seguro, con un registro previo de la operación. Entre volúmenes distintos la aplicación copia a un archivo temporal, verifica la copia, confirma el alta y solo entonces puede eliminar el original, si el contenido del destino coincide con el del origen. El tamaño y la fecha no bastan para ese borrado. El procedimiento también cubre un nombre ya ocupado, la falta de espacio, una interrupción y un fallo de SQLite. La huella del contenido no es obligatoria durante la importación: puede calcularse bajo demanda o en segundo plano, y en particular al comparar el original con el destino antes de borrarlo.
 
-Referenciar un archivo y dejarlo en su carpeta original, sin copiarlo ni moverlo, es una posibilidad sin confirmar. Hasta que se decida, la importación confirmada consiste en copiar o mover hacia la carpeta administrada.
+Referenciar un archivo y dejarlo en su carpeta original, sin copiarlo ni moverlo, está permitido (DC-19). El esquema lo admite desde la primera migración. La función se implementa en F9.3. Hasta entonces, la importación ofrecida consiste en copiar o mover hacia la carpeta administrada.
 
-También está pendiente la ubicación de esa carpeta: directorio de datos de la aplicación, carpeta elegida por la persona usuaria, u otra opción.
+La base y las imágenes viven en el directorio local de la aplicación. La carpeta administrada la elige la persona. La ruta propuesta es la carpeta conocida de vídeos más `Media Center`, y no se crea hasta que se confirme o hasta una importación explícita (DC-22).
 
 ## 5. Descargador
 
@@ -117,10 +115,10 @@ También está pendiente la ubicación de esa carpeta: directorio de datos de la
 | D-06 | Se puede elegir formato, calidad y biblioteca de destino | Confirmado. Los formatos y calidades ofrecidos dependen de las herramientas y están pendientes de concreción |
 | D-07 | Se pueden descargar miniaturas | Confirmado |
 | D-08 | Hay cola de descargas, progreso, cancelación y reintentos | Confirmado |
-| D-09 | Se detectan duplicados | Confirmado. La regla de duplicado está pendiente |
+| D-09 | Se detectan duplicados | Confirmado. La señal que define el duplicado está pendiente (DP-06). Cuando se detecta, se avisa y no se descarta el contenido en silencio |
 | D-10 | Una playlist importada puede generar una playlist local | Confirmado |
 
-La propuesta de datos, todavía sin aprobar, agrupa cada petición en un lote. Cada elemento conserva la posición que tenía en el origen. Así se pueden representar el progreso global, una cancelación, un reintento y el orden de la playlist local. Un vídeo individual es un lote de un solo elemento. El identificador de lote no sustituye a la regla de duplicados, que sigue pendiente.
+El esquema aprobado agrupa cada petición en un lote. Cada elemento conserva la posición que tenía en el origen y su estado. El lote conserva la petición de cancelación. El porcentaje de progreso no se guarda: el progreso global se calcula. Así se pueden representar una cancelación, un reintento y el orden de la playlist local. Un vídeo individual es un lote de un solo elemento. El identificador de lote no sustituye a la regla de duplicados, que sigue pendiente.
 
 El descargador de la primera versión trabaja con enlaces compatibles de YouTube. Otros sitios que yt-dlp pueda resolver no forman parte del alcance confirmado.
 
@@ -132,15 +130,15 @@ La interfaz debe dejar claro que la descarga corresponde a quien usa la aplicaci
 | --- | --- | --- |
 | M-01 | Los datos de la biblioteca se guardan en SQLite | Confirmado |
 | M-02 | Las imágenes se guardan en disco y SQLite guarda su referencia | Confirmado |
-| M-03 | De una canción se pueden editar título, artista, álbum, género, portada y otros campos relevantes | Confirmado. La lista cerrada de campos está pendiente de aprobación junto con el esquema |
+| M-03 | De una canción se pueden editar título, artista, álbum, género, año, portada y la preferencia visual | Confirmado. La duración real del archivo no es editable: la actualizan el archivo y el motor |
 | M-04 | De un vídeo o una película se pueden editar la información, el póster y la descripción | Confirmado |
 | M-05 | Un cambio personalizado prevalece sobre el metadato importado o descargado | Confirmado |
 | M-06 | Editar metadatos en la aplicación no modifica el archivo original | Confirmado como comportamiento por defecto |
 | M-07 | Se contempla escribir etiquetas en archivos compatibles como acción opcional | Previsto. La herramienta, los formatos y el momento de ofrecerla están pendientes |
 | M-08 | Los metadatos personalizados y las imágenes pertenecen a la ficha, no al archivo físico compartido | Confirmado |
-| M-09 | Eliminar una ficha no borra un archivo físico que otra ficha utiliza | Confirmado |
+| M-09 | Eliminar una ficha no borra el archivo físico, aunque sea la última que lo utiliza | Confirmado. Sí quita sus vínculos, sus apariciones y sus filas de imagen |
 
-La lista exacta de columnas sigue en la propuesta de [DATABASE.md](DATABASE.md) y no está aprobada.
+Las columnas del esquema inicial están aprobadas en [DATABASE.md](DATABASE.md). La base no está creada. La duración real del archivo no es editable en ninguna biblioteca.
 
 ## 7. Interfaz
 
@@ -193,7 +191,7 @@ Estos trabajos no están implementados. Están identificados en [ROADMAP.md](ROA
 
 Una entrega de la primera versión, cuando el desarrollo llegue a ese punto, tendrá que poder demostrar lo siguiente:
 
-1. Importar un archivo a la biblioteca elegida, copiándolo o moviéndolo con el procedimiento seguro, y ver su ficha con los metadatos leídos y, si existía, la portada extraída. Si el resultado no queda verificado, el original sigue en su sitio.
+1. Importar un archivo a la biblioteca elegida, copiándolo o moviéndolo con el procedimiento seguro, y ver su ficha con los metadatos leídos y, si existía, la portada extraída. Si el contenido del destino no queda comprobado frente al origen, el original sigue en su sitio.
 2. Corregir esa ficha sin alterar el archivo y comprobar que una lectura posterior conserva la corrección. Una imagen personalizada no sustituye el archivo de la portada extraída.
 3. Reproducir una canción, cambiar de sección y seguir oyéndola con los controles globales.
 4. Mostrar portada o vídeo en el panel derecho y ampliar o minimizar el vídeo sin reiniciar.

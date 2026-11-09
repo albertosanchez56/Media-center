@@ -1,7 +1,7 @@
 # Media Center — Progreso
 
 Estado del documento: vivo. Se actualiza al cerrar trabajo de planificación o de desarrollo.  
-Última actualización: 2026-11-06.
+Última actualización: 2026-11-09.
 
 ## Estado general
 
@@ -11,7 +11,7 @@ F1.4 está **hecha**: las dos integraciones experimentales de mpv (A, libmpv den
 
 F1.5 está **hecha**. Con las pruebas de viabilidad en A y en B, el usuario aprobó el 2026-11-06 la integración A, libmpv dentro del proceso: DP-01 queda cerrada en DC-17. B se descarta como solución principal y se conserva por ahora en el diagnóstico de desarrollo. El reproductor del producto no se ha empezado.
 
-No hay funcionalidad de producto. No existen biblioteca, importación, reproducción para la persona usuaria, descargas ni base de datos. No se han instalado SQLite, yt-dlp ni FFmpeg como herramientas. libmpv y mpv.exe solo están en una carpeta local ignorada por Git. El esquema de [DATABASE.md](DATABASE.md) sigue pendiente de aprobación y no se ha creado ninguna migración.
+No hay funcionalidad de producto. No existen biblioteca, importación, reproducción para la persona usuaria, descargas ni base de datos. No se han instalado SQLite, yt-dlp ni FFmpeg como herramientas. libmpv y mpv.exe solo están en una carpeta local ignorada por Git. El esquema de [DATABASE.md](DATABASE.md) está aprobado desde el 2026-11-09 (DC-18). Las rutas están decididas (DC-22). No se ha creado la base ni ninguna migración ni la carpeta multimedia.
 
 El [README.md](../README.md) describe el proyecto, en inglés, como planificación y desarrollo inicial.
 
@@ -411,7 +411,7 @@ Pruebas esenciales: las siete se ejecutaron en A y en B. Todas pasaron salvo la 
 | [PROJECT.md](PROJECT.md) | Redactado y revisado | Visión, alcance y vocabulario de archivo, ficha y lote |
 | [REQUIREMENTS.md](REQUIREMENTS.md) | Redactado y revisado | Confirmado, previsto, pendiente y futuro |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Redactado y revisado | Incluye el motor experimental de F1.4 y F1.5 y la organización del motor del producto para F7.1 |
-| [DATABASE.md](DATABASE.md) | Propuesta sin aprobar | No crear tablas a partir de él |
+| [DATABASE.md](DATABASE.md) | Esquema inicial aprobado el 2026-11-09 | No crear la base ni la migración hasta F2.2. Las rutas ya están en DC-22 |
 | [ROADMAP.md](ROADMAP.md) | Redactado y revisado | Fase 1 hecha (F1.1 a F1.5) |
 | [DECISIONS.md](DECISIONS.md) | Redactado y revisado | Confirmadas y pendientes |
 | [PROGRESS.md](PROGRESS.md) | Actualizado | Este documento |
@@ -420,10 +420,10 @@ Pruebas esenciales: las siete se ejecutaron en A y en B. Todas pasaron salvo la 
 
 | Fase | Tema | Estado |
 | --- | --- | --- |
-| 0 | Cerrar la planificación | F0.1, F0.3 y F0.4 hechas como documentación. F0.2 pendiente: el esquema no está aprobado |
+| 0 | Cerrar la planificación | Hecha. F0.1, F0.2, F0.3 y F0.4 completadas. El esquema inicial está aprobado |
 | 1 | Esqueleto e integración inicial de libmpv | Hecha. F1.1 a F1.5 completadas; libmpv dentro del proceso elegido en DC-17 |
-| 2 | Persistencia | No iniciada. Bloqueada por la aprobación del esquema y por la ruta de los datos |
-| 3 | Importación | No iniciada. La segunda ficha por archivo sigue bloqueada |
+| 2 | Persistencia | F2.1 hecha el 2026-11-09. F2.2 y F2.3 no han empezado. El esquema y las rutas ya no bloquean la migración |
+| 3 | Importación | No iniciada. La segunda ficha por archivo está confirmada (DC-21) y se implementa en F3.5, después de F3.2 |
 | 4 | Consulta de la biblioteca | No iniciada |
 | 5 | Edición de metadatos e imágenes | No iniciada |
 | 6 | Playlists | No iniciada. Colecciones y categorías bloqueadas |
@@ -440,30 +440,25 @@ El detalle de cada tarea está en [ROADMAP.md](ROADMAP.md). Ninguna tarea está 
 
 | Decisión | Antes de |
 | --- | --- |
-| [DP-17](DECISIONS.md) Aprobar el esquema | Crear la migración inicial |
-| [DP-09](DECISIONS.md) Rutas de datos | Crear la base, la carpeta administrada y la guía de instalación |
 | [DP-10](DECISIONS.md) Herramienta de etiquetas | Extraer portadas y rellenar fichas al importar |
-| [DP-04](DECISIONS.md) Referencias externas | Ofrecer un modo distinto de copiar y mover |
-| [DP-05](DECISIONS.md) Identidad de un archivo renombrado | Reconciliar rutas automáticamente |
-| [DP-06](DECISIONS.md) Duplicados de descarga | Avisar de una descarga repetida |
+| [DP-05](DECISIONS.md) Identidad de un archivo renombrado | Reconciliar rutas automáticamente. Las columnas ya están en el esquema |
+| [DP-06](DECISIONS.md) Duplicados de descarga | Elegir la señal del duplicado. Avisar y no descartar en silencio ya está fijado |
 | [DP-07](DECISIONS.md) Vídeo asociado más corto | Elegir bucle, último fotograma o preferencia de la ficha |
-| [DP-08](DECISIONS.md) Preferencia visual de la canción | Decidir si el vídeo asociado sustituye solo la imagen |
 | [DP-12](DECISIONS.md) Búsqueda, filtros, repetición y cola | Concretar esos controles |
-| [DP-13](DECISIONS.md) Reanudación fuera de las películas | Guardar la posición de vídeos o canciones |
+| [DP-13](DECISIONS.md) Reanudación fuera de las películas | Guardar la posición de vídeos o canciones. La columna ya existe y, por ahora, solo la escriben las películas |
 | [DP-14](DECISIONS.md) Origen de los subtítulos | Elegir pistas incrustadas, archivos externos o ambos |
 | [DP-15](DECISIONS.md) Barra musical y minirreproductor | Cerrar el diseño de esa convivencia |
 | [DP-16](DECISIONS.md) Formatos y calidades de descarga | Mostrar la lista en la interfaz |
-| [DP-18](DECISIONS.md) Varias fichas para un mismo archivo | Ofrecer esa función. El modelo propuesto ya la admite |
 | [DP-02](DECISIONS.md) y [DP-03](DECISIONS.md) Categorías y colecciones | Definir sus reglas. La migración posterior solo añadiría tablas nuevas |
 | [DP-11](DECISIONS.md) Escritura opcional de etiquetas | Ofrecer esa acción aparte |
 | [DP-19](DECISIONS.md) Formato del instalador | Generar el paquete de Windows |
 | [DP-20](DECISIONS.md) Empaquetado de herramientas externas | Decidir si viajan dentro del instalador. La DLL de libmpv usada en desarrollo no está aprobada para distribuirse |
 
-Decisiones ya cerradas: extracción de portadas (DC-12), datos propios de cada ficha (DC-13), copia y movimiento seguros (DC-14), momento de la integración de libmpv (DC-15), evolución de categorías y colecciones por tablas nuevas (DC-16) e integración de libmpv dentro del proceso (DC-17, que cierra DP-01).
+Decisiones ya cerradas: extracción de portadas (DC-12), datos propios de cada ficha (DC-13), copia y movimiento seguros (DC-14), momento de la integración de libmpv (DC-15), evolución de categorías y colecciones por tablas nuevas (DC-16), integración de libmpv dentro del proceso (DC-17, que cierra DP-01), esquema inicial (DC-18, que cierra DP-17), referencias externas (DC-19, que cierra DP-04; la función llega en F9.3), presentación visual automática (DC-20, que cierra DP-08), varias fichas para un mismo archivo (DC-21, que cierra DP-18; la función llega en F3.5) y rutas de almacenamiento (DC-22, que cierra DP-09).
 
 ## Siguiente paso
 
-La fase 1 está cerrada. El trabajo se detiene aquí: no se empieza F7.1 ni ninguna otra tarea sin autorización. Además, F7.1 depende de F3.2, y la fase 2 sigue bloqueada por la aprobación del esquema (DP-17) y por las rutas de datos (DP-09).
+La fase 0, la fase 1 y F2.1 están cerradas. F2.1 deja decididas las rutas y no crea la base, la migración ni la carpeta multimedia. El trabajo se detiene antes de F2.2. F7.1 no empieza: depende además de F3.2.
 
 ## Historial
 
@@ -479,3 +474,5 @@ La fase 1 está cerrada. El trabajo se detiene aquí: no se empieza F7.1 ni ning
 | 2026-11-06 | F1.4 hecha tras la aprobación de sus resultados. A es la candidata provisional y B la alternativa. DP-01 sigue abierta hasta F1.5. |
 | 2026-11-06 | F1.5 en revisión: pistas de audio, subtítulos incrustados y externos, dos modos de pantalla completa y traslado entre huecos añadidos al diagnóstico y probados en A y B, con escalas del 125 % y 150 %, un segundo monitor y medida de rendimiento. Hallado el recuadro negro con audio solo. Recomendación A, pendiente de aprobación. DP-01 sigue abierta. |
 | 2026-11-06 | F1.5 hecha tras la aprobación de sus resultados. DP-01 cerrada en DC-17: libmpv dentro del proceso (A). B descartada como solución principal y conservada por ahora en el diagnóstico. El recuadro negro con audio solo queda como defecto aceptado, con un criterio obligatorio en F7.1. DP-20 sigue pendiente: la DLL de desarrollo no está aprobada para distribuirse. |
+| 2026-11-09 | F0.2 hecha. Esquema inicial de SQLite aprobado en DC-18. Cierran también DP-04 (DC-19), DP-08 (DC-20) y DP-18 (DC-21). No se crea la base ni la migración. El trabajo se detiene antes de F2.1. |
+| 2026-11-09 | F2.1 hecha. Rutas aprobadas en DC-22. El directorio local de Tauri guarda la base, las imágenes y la configuración. La carpeta multimedia queda propuesta y no se crea. `tauri dev` usa un identificador distinto. No empieza F2.2. |

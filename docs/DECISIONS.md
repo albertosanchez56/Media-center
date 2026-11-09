@@ -1,11 +1,11 @@
 # Media Center — Decisiones
 
-Estado del documento: registro vivo, con la segunda revisión aplicada.  
-Última actualización: 2026-11-06.
+Estado del documento: registro vivo. El esquema inicial quedó aprobado el 2026-11-09.  
+Última actualización: 2026-11-09.
 
 Una decisión confirmada se respeta al implementar. Una decisión pendiente no se da por cerrada dentro del código ni de otros documentos. Si dos documentos discrepan, se anota aquí antes de implementar.
 
-El esquema de [DATABASE.md](DATABASE.md) no queda aprobado por las decisiones de modelo de esta revisión. Esas decisiones orientan la propuesta; las tablas se crearán cuando DP-17 se cierre.
+El esquema inicial de [DATABASE.md](DATABASE.md) está aprobado en DC-18. Las rutas están aprobadas en DC-22. Las tablas se crearán en F2.2. Las decisiones que no bloquean esa migración siguen pendientes y no quedan aprobadas por el esquema.
 
 ## Cómo se registra una decisión
 
@@ -69,7 +69,7 @@ Estados: confirmada, pendiente, prevista, descartada.
 - **Fecha:** 2026-11-04
 - **Estado:** confirmada
 - **Decisión:** El descargador acepta enlaces compatibles de YouTube y existe para usos permitidos por los permisos, los derechos y las condiciones aplicables. Puede descargar un elemento o una playlist, solo audio o audio y vídeo, con vista previa, miniatura, cola, progreso, cancelación, reintentos y detección de duplicados.
-- **Consecuencias:** Otros sitios que yt-dlp sea capaz de leer no se ofrecen en la primera versión. La propuesta de lotes y posiciones organiza esa cola. La regla concreta de duplicado sigue pendiente en DP-06.
+- **Consecuencias:** Otros sitios que yt-dlp sea capaz de leer no se ofrecen en la primera versión. Los lotes, el estado de cada elemento y `cancel_requested` están en el esquema aprobado (DC-18). La regla concreta de duplicado sigue pendiente en DP-06. El comportamiento ya fijado es detectar el duplicado y avisarlo, sin descartar el contenido en silencio.
 
 ### DC-09 Migraciones versionadas
 
@@ -104,14 +104,14 @@ Estados: confirmada, pendiente, prevista, descartada.
 - **Fecha:** 2026-11-04
 - **Estado:** confirmada
 - **Decisión:** Los metadatos personalizados y las imágenes pertenecen a cada ficha. El modelo separa la identidad del archivo físico de las fichas y de sus vínculos. Eliminar una ficha no borra un archivo físico que otra ficha utiliza.
-- **Consecuencias:** La propuesta de `stored_files`, `media_items` e `item_files` refleja esa separación. La función de crear varias fichas para el mismo archivo sigue pendiente en DP-18. Aunque una ficha sea la única que usa un archivo, DC-07 impide borrarlo sin autorización.
+- **Consecuencias:** `stored_files`, `media_items` e `item_files` forman parte del esquema aprobado (DC-18). Crear otra ficha para el mismo archivo está confirmado en DC-21 y se ofrece en F3.5. Aunque una ficha sea la única que usa un archivo, ni DC-07 ni el borrado de la ficha lo eliminan sin autorización.
 
 ### DC-14 Copia y movimiento seguros
 
 - **Fecha:** 2026-11-04
 - **Estado:** confirmada
 - **Decisión:** Toda operación queda registrada antes de alterar el origen. En el mismo volumen se usa un movimiento directo cuando el diario ya está confirmado, el nombre de destino está libre y el renombrado puede recuperarse. Entre volúmenes distintos se copia a un temporal, se verifica la copia, se confirma el alta y solo entonces se puede eliminar el original. Un nombre ocupado no se sobrescribe. Sin espacio suficiente la operación no deja el original a medias. Con incertidumbre, el original no se elimina de forma automática.
-- **Consecuencias:** El procedimiento y la recuperación están descritos en [ARCHITECTURE.md](ARCHITECTURE.md). La tabla `file_operations` forma parte de la propuesta de datos y todavía no está aprobada. El algoritmo de huella no es obligatorio para la verificación por tamaño y sigue pendiente en DP-05.
+- **Consecuencias:** El procedimiento y la recuperación están descritos en [ARCHITECTURE.md](ARCHITECTURE.md). La tabla `file_operations` forma parte del esquema aprobado (DC-18). Antes de eliminar el original de un movimiento, el contenido del destino tiene que coincidir con el del origen. El tamaño y la fecha no bastan para ese borrado. Si la comparación no puede completarse, el original se conserva. La huella no es obligatoria durante la importación. La reasignación automática de una ruta movida fuera de la aplicación sigue pendiente en DP-05.
 
 ### DC-15 Momento de la integración de libmpv
 
@@ -125,7 +125,7 @@ Estados: confirmada, pendiente, prevista, descartada.
 - **Fecha:** 2026-11-04
 - **Estado:** confirmada como forma de evolución; las funciones siguen previstas
 - **Decisión:** Cuando se confirmen las reglas, la migración correspondiente solo creará tablas nuevas y sus vínculos con las fichas. No añadirá columnas de categoría o de colección a las tablas iniciales.
-- **Consecuencias:** DP-02 y DP-03 siguen pendientes. El boceto de tablas futuras de [DATABASE.md](DATABASE.md) no forma parte del esquema inicial ni está aprobado.
+- **Consecuencias:** DP-02 y DP-03 siguen pendientes. El boceto de tablas futuras de [DATABASE.md](DATABASE.md) no forma parte del esquema inicial aprobado ni está aprobado.
 
 ### DC-17 libmpv se integra dentro del proceso de Media Center
 
@@ -144,6 +144,46 @@ Estados: confirmada, pendiente, prevista, descartada.
   - La DLL usada en desarrollo no queda aprobada para distribuirse. Su procedencia, sus obligaciones de licencia y su empaquetado siguen pendientes en DP-20.
   - Pendiente aceptado en F1.5: con audio sin vídeo, la superficie se muestra como un recuadro negro. La presencia de vídeo se detecta (`vid` y `vo-configured`), y F7.1 tiene como criterio obligatorio ocultar la superficie en ese caso.
   - Siguen las limitaciones medidas de la superficie nativa: recorte con regiones, pequeño retraso respecto al HTML, rueda con paso fijo, huecos obligatorios para los controles superpuestos, cambios de hueco muy rápidos sin descartar, y el desajuste de escala al mover la ventana por programa entre monitores con escalas distintas.
+
+### DC-18 Esquema inicial de SQLite
+
+- **Fecha:** 2026-11-09
+- **Estado:** confirmada. Cierra DP-17 en la tarea F0.2
+- **Decisión:** El esquema de [DATABASE.md](DATABASE.md) es el esquema inicial aprobado. Separa archivo físico, ficha y vínculo. Admite referencias externas desde la primera migración. Las playlists permiten elementos repetidos y su biblioteca es anulable para listas mixtas futuras. La primera versión solo crea playlists de una biblioteca. Cada elemento de descarga guarda su estado. El lote guarda `cancel_requested`. El porcentaje de progreso no se persiste. `content_hash` puede calcularse bajo demanda o en segundo plano y no es obligatorio al importar. Antes de eliminar el original de un movimiento, el contenido del destino tiene que coincidir con el del origen; el tamaño y la fecha no bastan, y ante cualquier incertidumbre el original se conserva. Si el borrado físico de una imagen gestionada falla después de confirmar SQLite, la ficha no se deshace y no se eliminan otros archivos.
+- **Consecuencias:** F0.2 queda hecha. No se crea la base ni la migración en esta tarea. Las rutas quedaron después en DC-22. F2.2 sigue sin empezar. Categorías y colecciones siguen fuera de la primera migración (DC-16). No cierran DP-02, DP-03, DP-05, DP-06, DP-07, DP-10, DP-11, DP-12, DP-13, DP-14, DP-15, DP-16, DP-19 ni DP-20.
+
+### DC-19 La importación puede recordar una ruta externa
+
+- **Fecha:** 2026-11-09
+- **Estado:** confirmada. Cierra DP-04. La función se implementa en F9.3
+- **Decisión:** Además de copiar y de mover, la importación puede limitarse a recordar la ruta original, sin copiar ni mover el archivo. `stored_files.storage` admite `external` desde la primera migración.
+- **Consecuencias:** Una fila `external` no se mueve, no se renombra y no se borra. Una ruta que ya cae dentro de la carpeta administrada reutiliza el archivo físico existente. La importación por referencia no crea una operación de borrado. Hasta F9.3, la importación ofrecida sigue siendo copiar o mover.
+
+### DC-20 Presentación visual automática, con elección explícita
+
+- **Fecha:** 2026-11-09
+- **Estado:** confirmada. Cierra DP-08
+- **Decisión:** Si `visual_preference` es nula, la presentación es automática: vídeo asociado si existe, si no el vídeo del propio archivo cuando corresponde, y en los demás casos la portada. Un valor de la columna es una elección explícita de la persona: `cover`, `original_video` o `associated_video`.
+- **Consecuencias:** F8.2 aplica esta regla. DC-12 no cambia: la portada extraída y la imagen personalizada conviven. El bucle de un vídeo asociado más corto sigue pendiente en DP-07.
+
+### DC-21 Varias fichas para un mismo archivo físico
+
+- **Fecha:** 2026-11-09
+- **Estado:** confirmada. Cierra DP-18. La función se implementa en F3.5
+- **Decisión:** Un mismo archivo físico puede utilizarse en varias bibliotecas mediante fichas independientes, sin duplicar el archivo. Cada ficha conserva sus metadatos y sus imágenes.
+- **Consecuencias:** La importación confirmada sigue creando una sola ficha (DC-04). F3.5 ofrece la segunda ficha y ya no espera una confirmación funcional. Eliminar una ficha quita sus vínculos y sus apariciones, y no elimina el archivo físico.
+
+### DC-22 Dónde viven la base, las imágenes y los medios
+
+- **Fecha:** 2026-11-09
+- **Estado:** confirmada. Cierra DP-09 en la tarea F2.1
+- **Decisión:** Los datos internos usan el directorio local de Tauri 2, `app_local_data_dir`: `{FOLDERID_LocalAppData}\{identifier}`. Ahí estarán `library.db` con sus auxiliares WAL, la carpeta `images` y `storage.json`. No se usa el directorio itinerante. En Windows el directorio de caché de Tauri coincide con ese directorio local, así que no se usa como almacén distinto. La carpeta multimedia es elegida por la persona. La ruta propuesta es `{FOLDERID_Videos}\Media Center`. Esa propuesta no queda confirmada sola y el primer arranque no crea la carpeta. Se crea al confirmarla o al usarla en una importación explícita. La interfaz para elegirla llega más adelante. Una referencia externa permanece en su ruta original. `tauri dev` usa el identificador `com.mellk.mediacenter.dev` y propone `{FOLDERID_Videos}\Media Center Dev`. `tauri build` mantiene `com.mellk.mediacenter`. Las capabilities no cambian.
+- **Consecuencias:**
+  - `storage.json` se escribe con un archivo temporal y una sustitución. Si la escritura falla, se conserva la configuración anterior. El archivo distingue ruta propuesta y ruta confirmada. Si la confirmada no está disponible, se conserva y no se sustituye por la predeterminada.
+  - Los temporales que el diario tiene que recuperar viven en `.media-center\incoming`, dentro de la carpeta multimedia y en su mismo volumen. Los restos desechables van a `{temporal del sistema}\{identifier}`.
+  - Desinstalar no borra la carpeta multimedia ni, por defecto, el directorio local. Borrar los datos internos durante la desinstalación queda para la fase de distribución, como opción explícita.
+  - Una copia del catálogo necesita una instantánea consistente de la base, con el WAL incorporado, más `images` y `storage.json`. Restaurar el catálogo devuelve esos tres elementos juntos. Los archivos multimedia se respaldan aparte, copiando la carpeta administrada. F2.1 no implementa la copia ni la restauración.
+  - F2.2 sigue sin empezar: no hay base ni migración. `.gitignore` mantiene `library/`, `downloads/` y `data/` como red de seguridad. La aplicación no las usa.
 
 ## Decisiones pendientes
 
@@ -208,13 +248,14 @@ Estados: confirmada, pendiente, prevista, descartada.
 ### DP-04 Archivos fuera de la carpeta administrada
 
 - **Fecha:** 2026-11-04
-- **Estado:** pendiente
-- **Bloquea:** F9.3
+- **Estado:** cerrada el 2026-11-09 en F0.2. La opción elegida es permitir la referencia externa y queda recogida en DC-19. La función se implementa en F9.3. La entrada se conserva aquí con su historial
+- **Bloqueaba:** F9.3. Ya no la bloquea por la decisión; la tarea sigue pendiente de implementarse
 - **Qué hay que elegir:** Si, además de copiar y de mover, la importación puede limitarse a recordar la ruta original.
 - **Opciones:**
   - Solo copiar o mover a la carpeta administrada.
   - Permitir también una referencia externa.
 - **Consecuencias de dejarla abierta:** La propuesta de `stored_files` guarda una ruta relativa a la carpeta administrada. Copiar y mover sí pueden implementarse con DC-14. Esta decisión es distinta de DP-18: DP-18 trata varias fichas de un archivo ya administrado; DP-04 trata un archivo que permanece fuera.
+- **Resolución:** se permite la referencia externa. El esquema la admite desde la primera migración. Hasta F9.3 la importación ofrecida sigue siendo copiar o mover.
 
 ### DP-05 Identidad de un archivo movido o renombrado
 
@@ -223,7 +264,7 @@ Estados: confirmada, pendiente, prevista, descartada.
 - **Bloquea:** F9.2
 - **Qué hay que elegir:** Qué señales permiten afirmar que un archivo en una ruta nueva es el mismo que ya tenía registro.
 - **Señales posibles, combinables:** tamaño, fecha, hash completo, hash parcial, ruta anterior.
-- **Consecuencias de dejarla abierta:** Se puede marcar un archivo como no disponible cuando falta en su ruta. No se reasigna la ruta de forma automática. La verificación de una copia o un movimiento usa el tamaño anotado y no espera a esta decisión.
+- **Consecuencias de dejarla abierta:** Se puede marcar un archivo como no disponible cuando falta en su ruta. No se reasigna la ruta de forma automática. Eliminar el original de un movimiento no espera a esta decisión y tampoco se autoriza solo con el tamaño y la fecha: exige la comparación de contenido de DC-18. Si esa comparación no puede completarse, el original se conserva.
 
 ### DP-06 Regla de duplicados en descargas
 
@@ -232,7 +273,8 @@ Estados: confirmada, pendiente, prevista, descartada.
 - **Bloquea:** F10.5
 - **Qué hay que elegir:** Cuándo una descarga se considera repetida.
 - **Señales posibles:** URL de origen, identificador del vídeo, hash del archivo resultante, misma biblioteca o cualquier biblioteca.
-- **Consecuencias de dejarla abierta:** La columna `source_key` de la propuesta queda preparada y sin semántica definitiva. El lote y la posición no deciden el duplicado. El resto de la cola puede diseñarse sin esta regla.
+- **Consecuencias de dejarla abierta:** La columna `source_key` del esquema aprobado queda preparada y sin semántica definitiva. El lote y la posición no deciden el duplicado. El resto de la cola puede diseñarse sin esta regla.
+- **Nota del 2026-11-09, sin cerrar la señal:** cuando un duplicado se detecte, se avisa. No se descarta el contenido en silencio. La persona decide si la descarga sigue. Esta nota no elige entre URL, identificador del vídeo, huella o biblioteca.
 
 ### DP-07 Vídeo asociado más corto que la canción
 
@@ -245,19 +287,21 @@ Estados: confirmada, pendiente, prevista, descartada.
 ### DP-08 Preferencia entre portada, vídeo original y vídeo asociado
 
 - **Fecha:** 2026-11-04
-- **Estado:** pendiente
-- **Bloquea:** el detalle de F8.2
+- **Estado:** cerrada el 2026-11-09 en F0.2. La regla queda recogida en DC-20. La entrada se conserva aquí con su historial
+- **Bloqueaba:** el detalle de F8.2. Ya no lo bloquea
 - **Qué hay que elegir:** Si la presencia de un vídeo asociado cambia sola la imagen mostrada, o si la ficha guarda una preferencia de la persona usuaria.
 - **Consecuencias de dejarla abierta:** La columna `visual_preference` es una propuesta, no un campo aprobado. DC-12 ya fija que la portada extraída y la imagen personalizada conviven.
+- **Resolución:** el valor nulo aplica la regla automática (vídeo asociado, si no el vídeo del propio archivo, si no la portada). Un valor explícito es la elección de la persona. DC-12 no cambia.
 
 ### DP-09 Dónde se guardan la base, los medios y las imágenes
 
 - **Fecha:** 2026-11-04
-- **Estado:** pendiente
-- **Bloquea:** F2.1 y la documentación de instalación F12.4
+- **Estado:** cerrada el 2026-11-09 en F2.1. La opción elegida es una combinación y queda recogida en DC-22. La entrada se conserva aquí con su historial
+- **Bloqueaba:** F2.1 y la documentación de instalación F12.4. F2.1 ya no está bloqueada. F12.4 sigue pendiente y usará esta decisión
 - **Qué hay que elegir:** Directorio de datos de Windows, carpeta elegida por la persona usuaria, o una combinación.
 - **Nota:** `.gitignore` excluye `library/`, `downloads/` y `data/` en la raíz del repositorio para no versionar material local. Eso no fija las rutas de la aplicación.
 - **Consecuencias de dejarla abierta:** No se crea el archivo SQLite definitivo.
+- **Resolución:** la base y las imágenes van al directorio local de Tauri. La carpeta multimedia es configurable, con una ruta propuesta en la carpeta conocida de vídeos que no se crea hasta confirmarla. El desarrollo y la instalación no comparten directorios.
 
 ### DP-10 Herramienta de etiquetas
 
@@ -321,18 +365,20 @@ Estados: confirmada, pendiente, prevista, descartada.
 ### DP-17 Aprobación del esquema inicial
 
 - **Fecha:** 2026-11-04
-- **Estado:** pendiente
-- **Bloquea:** F0.2 y F2.2
+- **Estado:** cerrada el 2026-11-09 en F0.2, con la aprobación del usuario. El esquema queda recogido en DC-18 y en [DATABASE.md](DATABASE.md). La entrada se conserva aquí con su historial
+- **Bloqueaba:** F0.2 y F2.2. F0.2 ya no está bloqueada. Las rutas quedaron en DC-22 y F2.2 sigue sin empezar
 - **Qué hay que elegir:** Las respuestas a las preguntas finales de [DATABASE.md](DATABASE.md), incluida la aceptación explícita de archivos físicos separados, lotes, diario de operaciones y apariciones repetidas.
 - **Consecuencias de dejarla abierta:** No hay tablas definitivas y no se genera la migración inicial. La segunda revisión de la documentación no cierra esta decisión.
+- **Resolución:** se aprueba el esquema de DC-18. No se crea la base ni la migración en F0.2. Las rutas quedaron después en DC-22. Las decisiones que no bloquean la primera migración siguen pendientes.
 
 ### DP-18 Varias fichas para un mismo archivo físico
 
 - **Fecha:** 2026-11-04
-- **Estado:** pendiente
-- **Bloquea:** F3.5
+- **Estado:** cerrada el 2026-11-09 en F0.2. La función queda confirmada en DC-21 y se implementa en F3.5. La entrada se conserva aquí con su historial
+- **Bloqueaba:** F3.5. Ya no la bloquea por la decisión; la tarea sigue dependiendo de F3.2
 - **Qué hay que elegir:** Si la persona usuaria puede crear otra ficha, en otra biblioteca, sobre un archivo que ya está en la carpeta administrada, sin duplicar el fichero.
 - **Consecuencias de dejarla abierta:** La importación confirmada sigue creando una sola ficha. El modelo propuesto ya separa archivo, ficha y vínculo para no impedir la función. Los metadatos y las imágenes de cada ficha son independientes por DC-13.
+- **Resolución:** se permite. La importación confirmada sigue creando una sola ficha. Eliminar una ficha no elimina el archivo físico.
 
 ### DP-19 Formato del instalador de Windows
 
@@ -359,10 +405,11 @@ Estas lecturas mantienen los requisitos confirmados sin cerrar las decisiones pe
 | --- | --- |
 | Una sola reproducción y, a la vez, un vídeo asociado | El vídeo asociado no es otra reproducción. Es la imagen de la canción y entra en silencio |
 | No modificar el archivo y, a la vez, poder escribir etiquetas | La edición de la ficha y la extracción de la portada no tocan el archivo. La escritura de etiquetas sería una acción distinta, todavía por detallar |
-| Carpeta administrada y detección de cambios externos | Copiar o mover deja el archivo bajo la carpeta administrada. La persona u otro programa pueden renombrarlo, moverlo o borrarlo después. Referenciar una ruta exterior es DP-04 |
-| Varias bibliotecas para un mismo archivo y una sola ficha al importar | DC-13 separa el archivo de las fichas. DC-04 crea una ficha en la importación. DP-18 decide si más adelante puede existir otra ficha sin copiar el archivo |
+| Carpeta administrada y detección de cambios externos | Copiar o mover deja el archivo bajo la carpeta administrada. La persona u otro programa pueden renombrarlo, moverlo o borrarlo después. Referenciar una ruta exterior está permitido (DC-19) y se implementa en F9.3 |
+| Varias bibliotecas para un mismo archivo y una sola ficha al importar | DC-13 separa el archivo de las fichas. DC-04 crea una ficha en la importación. DC-21 permite otra ficha sin copiar el archivo; ofrecerla es F3.5 |
 | Portada incrustada e imagen personalizada | DC-12 guarda las dos. La personalizada es la que se muestra cuando está seleccionada. La extraída permanece |
-| Movimiento directo y no borrar el original con incertidumbre | El movimiento directo en el mismo volumen es un renombrado recuperable porque el diario existe antes. Entre volúmenes, el original solo se elimina tras verificar la copia y confirmar el alta. En `needs_review` no hay borrado automático |
+| Movimiento directo y no borrar el original con incertidumbre | El movimiento directo en el mismo volumen es un renombrado recuperable porque el diario existe antes. Entre volúmenes, el original solo se elimina tras confirmar el alta y comprobar que el contenido del destino coincide con el del origen. El tamaño y la fecha no bastan. En `needs_review`, o si la comparación no puede completarse, no hay borrado automático |
+| Borrar la ficha y conservar el archivo | La ficha arrastra sus vínculos, sus apariciones y sus filas de imagen. El archivo físico no se borra. Si después falla el borrado de una imagen gestionada, la ficha confirmada no se deshace y no se borran otros archivos |
 | Sin servidores en la primera versión y streaming móvil en el futuro | El streaming pertenece a una ampliación posterior. El instalador de Windows no añade un servidor |
 | libmpv elegido e integración que se elige después | El motor se eligió en DC-11 y la integración en F1.5, antes de las funciones avanzadas: libmpv dentro del proceso (DC-17) |
 

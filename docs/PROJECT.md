@@ -1,11 +1,11 @@
 # Media Center — Visión del proyecto
 
-Estado del documento: planificación inicial, con la segunda revisión aplicada.  
-Última actualización: 2026-11-06.
+Estado del documento: planificación inicial, con el esquema de datos aprobado.  
+Última actualización: 2026-11-09.
 
 Este documento describe qué es Media Center, a quién se dirige la primera versión y qué queda fuera de ella. Los requisitos detallados están en [REQUIREMENTS.md](REQUIREMENTS.md). Las decisiones cerradas y las que siguen abiertas están en [DECISIONS.md](DECISIONS.md).
 
-El esquema de SQLite descrito en [DATABASE.md](DATABASE.md) sigue siendo una propuesta. Esta revisión no lo aprueba ni inicia el desarrollo.
+El esquema de SQLite descrito en [DATABASE.md](DATABASE.md) está aprobado (DC-18). La base y la migración no están creadas. La persistencia no ha empezado.
 
 ## Qué es
 
@@ -71,7 +71,7 @@ Una aplicación móvil con streaming necesitaría un punto de conexión en el or
 | --- | --- | --- |
 | Angular y TypeScript | Interfaz | Elegida |
 | Tauri 2 y Rust | Aplicación de escritorio, archivos, procesos y persistencia | Elegida |
-| SQLite | Biblioteca y metadatos | Elegida. El esquema concreto sigue pendiente de aprobación |
+| SQLite | Biblioteca y metadatos | Elegida. El esquema inicial está aprobado (DC-18). La base todavía no está creada |
 | libmpv | Motor multimedia | Elegido e integrado dentro del proceso de la aplicación (DC-17, F1.5). Falta decidir cómo viaja en el instalador |
 | yt-dlp y FFmpeg | Descargas autorizadas | Elegidos como herramientas. Falta decidir si viajan dentro del instalador |
 | Lector y editor de etiquetas | Leer metadatos y portadas y, de forma opcional, escribir etiquetas | La extracción de portadas está confirmada. La herramienta concreta sigue pendiente |
@@ -90,9 +90,9 @@ Estos términos se usan con el mismo significado en el resto de la documentació
 | --- | --- |
 | Biblioteca | Una de las tres secciones principales: Música, Vídeos o Películas |
 | Ficha | Registro visible en una biblioteca, con sus metadatos, su favorito y sus imágenes |
-| Archivo físico | Fichero en disco, con una identidad propia, independiente de cuántas fichas lo usen |
+| Archivo físico | Fichero en disco, con una identidad propia, independiente de cuántas fichas lo usen. Puede estar en la carpeta administrada o, cuando se implemente la referencia externa, en su ruta original |
 | Vínculo | Relación entre una ficha y un archivo físico, con un papel: contenido principal o vídeo asociado |
-| Carpeta administrada | Directorio en el que la aplicación guarda los archivos copiados o movidos |
+| Carpeta administrada | Directorio elegido por la persona para los archivos copiados o movidos. La ruta propuesta es la carpeta conocida de vídeos más `Media Center`, y no se crea hasta confirmarla |
 | Carpeta de imágenes | Directorio de portadas, pósters y miniaturas de la aplicación |
 | Playlist | Lista ordenada de fichas |
 | Aparición | Una entrada de una ficha dentro de una playlist. La misma ficha puede tener varias apariciones, cada una con su posición |
@@ -111,7 +111,7 @@ Estos términos se usan con el mismo significado en el resto de la documentació
 | --- | --- |
 | [REQUIREMENTS.md](REQUIREMENTS.md) | Requisitos confirmados, previstos y pendientes |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Estructura prevista de la aplicación y procedimientos de archivos |
-| [DATABASE.md](DATABASE.md) | Diseño de datos revisado, pendiente de aprobación |
+| [DATABASE.md](DATABASE.md) | Esquema inicial aprobado. La migración no está creada |
 | [ROADMAP.md](ROADMAP.md) | Fases, tareas y criterios de aceptación |
 | [DECISIONS.md](DECISIONS.md) | Decisiones confirmadas y decisiones abiertas |
 | [PROGRESS.md](PROGRESS.md) | Estado de avance |

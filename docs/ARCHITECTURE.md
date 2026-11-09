@@ -1,9 +1,9 @@
 # Media Center — Arquitectura
 
 Estado del documento: propuesta de estructura, con la segunda revisión aplicada. La sección «Interfaz Angular implementada» describe el código que existe tras F1.3, «Motor experimental de F1.4 y F1.5» el estudio de libmpv, y «Organización del motor del producto» lo que se construirá en F7.1.  
-Última actualización: 2026-11-06.
+Última actualización: 2026-11-09.
 
-Este documento reparte responsabilidades entre la interfaz, la lógica y los datos. El procedimiento de copia y movimiento y la extracción de portadas están confirmados en [DECISIONS.md](DECISIONS.md). La integración de libmpv está elegida (DC-17). La herramienta de etiquetas y el esquema de SQLite siguen abiertos. El esquema propuesto está en [DATABASE.md](DATABASE.md) y no está aprobado.
+Este documento reparte responsabilidades entre la interfaz, la lógica y los datos. El procedimiento de copia y movimiento y la extracción de portadas están confirmados en [DECISIONS.md](DECISIONS.md). La integración de libmpv está elegida (DC-17). El esquema inicial de SQLite está aprobado (DC-18) en [DATABASE.md](DATABASE.md) y todavía no está creado. Las rutas están decididas (DC-22). La herramienta de etiquetas sigue abierta.
 
 ## Vista general
 
@@ -285,21 +285,21 @@ El archivo físico y la ficha no son el mismo registro.
 
 | Registro | Guarda |
 | --- | --- |
-| Archivo físico | Ruta dentro de la carpeta administrada, tamaño, estado y origen remoto si llegó por descarga |
-| Ficha | Biblioteca, textos visibles, favorito, posición de reanudación e imágenes |
+| Archivo físico | Ruta administrada o, cuando F9.3 lo ofrezca, ruta externa; tamaño, estado y, si se ha calculado, huella del contenido |
+| Ficha | Biblioteca, textos visibles, favorito, preferencia visual, posición de reanudación de una película e imágenes |
 | Vínculo | Qué ficha usa qué archivo y con qué papel: contenido principal o vídeo asociado |
 
-Una importación confirmada crea una ficha en la biblioteca elegida y un vínculo a su archivo principal. El modelo puede asociar más fichas al mismo archivo físico. Ofrecer esa función a la persona usuaria es la decisión pendiente DP-18.
+Una importación confirmada crea una ficha en la biblioteca elegida y un vínculo a su archivo principal. El mismo archivo físico puede tener más fichas, sin duplicar el fichero (DC-21). Ofrecer esa segunda ficha es F3.5.
 
-Cada ficha conserva sus metadatos personalizados y sus imágenes. Cambiar la portada de una ficha no cambia la de otra ni el archivo multimedia.
+Cada ficha conserva sus metadatos personalizados y sus imágenes. Cambiar la portada de una ficha no cambia la de otra ni el archivo multimedia. La duración real del archivo no es un campo editable: la actualizan el archivo y el motor.
 
-Quitar una ficha borra sus vínculos y puede retirar las imágenes que solo le pertenecían. No borra el archivo físico si otra ficha lo utiliza. Aunque sea la última ficha, el archivo físico tampoco se borra sin autorización.
+Quitar una ficha borra sus vínculos, sus apariciones en playlists y sus filas de imagen. No borra el archivo físico, aunque fuera la última ficha que lo usaba. Las copias de imagen gestionadas se intentan borrar después de confirmar SQLite, solo cuando ya no tienen referencias y ninguna operación pendiente las nombra. Si ese borrado físico falla, la ficha confirmada no se deshace y no se eliminan otros archivos. Al arrancar no se barre la carpeta de imágenes.
 
 ## Flujos principales
 
 ### Importar
 
-1. La persona elige archivos o una carpeta, la biblioteca de destino y si el archivo se copia o se mueve.
+1. La persona elige archivos o una carpeta, la biblioteca de destino y si el archivo se copia o se mueve. Recordar la ruta sin copiar ni mover está permitido en el esquema (DC-19) y se ofrece en F9.3. Hasta entonces este flujo copia o mueve. La huella del contenido no se calcula de forma obligatoria en este alta; puede hacerse bajo demanda o en segundo plano.
 2. Rust comprueba el espacio disponible cuando la operación necesita una copia, y elige un nombre libre en la carpeta administrada. Un nombre ocupado no se sobrescribe: se reserva otro nombre y queda anotado en el diario.
 3. Rust graba la operación en SQLite antes de modificar el fichero de origen.
 4. Ejecuta el procedimiento de copia o movimiento de la sección siguiente.
@@ -315,7 +315,7 @@ La extracción de la portada está confirmada. El archivo multimedia no cambia d
 ### Copiar
 
 1. Copiar al archivo temporal anotado en el diario.
-2. Verificar que el temporal existe y que su tamaño coincide con el del origen.
+2. Verificar que el temporal existe y que su tamaño coincide con el del origen. Esta comprobación no autoriza a borrar el original: una copia no lo borra en ningún paso.
 3. Renombrar el temporal al nombre definitivo dentro de la carpeta administrada. Ese renombrado ocurre en el volumen de destino.
 4. Confirmar en SQLite la ficha y el archivo físico.
 5. El origen permanece en su sitio.
@@ -331,7 +331,7 @@ Se usa un movimiento directo cuando se cumplen todas estas condiciones:
 - Ese nombre está libre.
 - El sistema puede renombrar el archivo sin copiarlo.
 
-El renombrado es el propio movimiento. Después se verifica que el destino existe y que el tamaño coincide con el anotado. A continuación se confirma la ficha. Si el renombrado falla, el origen sigue donde estaba.
+El renombrado es el propio movimiento: no queda un original aparte que borrar. Después se verifica que el destino existe. A continuación se confirma la ficha. Si el renombrado falla, el origen sigue donde estaba. Si no se puede demostrar que el archivo está en el destino, no se borra nada.
 
 Si alguna condición no se cumple, el mismo volumen usa el procedimiento de volúmenes distintos. Así un movimiento directo solo se hace cuando hay una forma segura de recuperarlo.
 
@@ -339,12 +339,12 @@ Si alguna condición no se cumple, el mismo volumen usa el procedimiento de vol�
 
 1. Comprobar que el destino tiene espacio para el archivo completo.
 2. Copiar al temporal del destino.
-3. Verificar tamaño y existencia.
+3. Verificar que el temporal existe y que su tamaño coincide con el del origen.
 4. Renombrar el temporal al nombre definitivo.
 5. Confirmar en SQLite la ficha, el archivo físico y el estado `db_committed` de la operación.
-6. Eliminar el original solo en ese momento.
+6. Comparar el contenido del destino con el del origen. Solo si coinciden, eliminar el original.
 
-Hasta el paso 6 el original sigue en su ruta. Si la verificación o SQLite fallan, el original no se elimina.
+Hasta el paso 6 el original sigue en su ruta. El tamaño y la fecha de modificación no bastan para el paso 6. Si la comparación de contenido no puede completarse, no coincide, o SQLite no ha confirmado el alta, el original no se elimina y la operación queda en revisión. La huella usada en esa comparación puede calcularse en ese momento; no hace falta haberla calculado durante la importación.
 
 ### Conflictos, espacio, interrupciones y SQLite
 
@@ -353,11 +353,11 @@ Hasta el paso 6 el original sigue en su ruta. Si la verificación o SQLite falla
 | El nombre de destino ya existe | Se elige otro nombre, se anota en el diario y no se sobrescribe el archivo existente |
 | No hay espacio suficiente antes de copiar | La operación no empieza. El original permanece |
 | Se agota el espacio durante la copia | Se retira solo el temporal incompleto creado por esta operación. El original permanece y la operación queda fallida |
-| Se interrumpe el renombrado directo | La recuperación usa el diario. Si el archivo está en el destino y el tamaño coincide, se completa el alta. Si no se puede demostrar eso, la operación queda en revisión y no se borra nada |
+| Se interrumpe el renombrado directo | La recuperación usa el diario. Si el archivo está en el destino, se completa el alta. Si no se puede demostrar eso, la operación queda en revisión y no se borra nada |
 | Falla SQLite antes de tocar el origen | No hay cambio en disco |
-| Falla SQLite después de un renombrado directo ya verificado | El diario indica el destino. La recuperación completa el alta si el archivo sigue ahí y el tamaño coincide |
-| Falla SQLite después de una copia verificada | Se conservan el original y la copia. No se elimina el original. La recuperación puede reintentar el alta |
-| Falla o se interrumpe después del alta y antes de borrar el original de un movimiento | La recuperación borra el original solo si el destino verifica y el alta está confirmada |
+| Falla SQLite después de un renombrado directo ya verificado | El diario indica el destino. La recuperación completa el alta si el archivo sigue ahí. No hay un original aparte que borrar |
+| Falla SQLite después de una copia verificada | Se conservan el original y la copia. No se elimina el original. La recuperación puede reintentar el alta una sola vez |
+| Falla o se interrumpe después del alta y antes de borrar el original de un movimiento | La recuperación borra el original solo si el alta está confirmada y el contenido del destino coincide con el del origen. El tamaño y la fecha no bastan. Si hay incertidumbre, el original se conserva |
 
 ### Recuperación de operaciones incompletas
 
@@ -368,10 +368,12 @@ Al arrancar, Rust lee el diario y trata cada operación que no esté completada:
 | Diario creado y el origen intacto, sin temporal o con temporal a medias | Se elimina solo ese temporal, si el diario lo identifica y está incompleto. El original se conserva. La operación pasa a fallida |
 | Copia verificada en el destino y alta sin confirmar | Se reintenta el alta. El original se conserva |
 | Renombrado directo verificado y alta sin confirmar | Se completa el alta contra el destino. No hace falta borrar el origen porque el renombrado ya lo trasladó |
-| Alta confirmada, movimiento y origen todavía presente, destino verificado | Se completa el borrado del original. El resultado ya es conocido |
-| Destino ausente, tamaño distinto o diario insuficiente para explicar el estado | La operación pasa a `needs_review`. No se elimina el original de forma automática. La interfaz lo muestra para que la persona decida |
+| Alta confirmada, movimiento y origen todavía presente | Se completa el borrado del original solo si el contenido del destino coincide con el del origen. Si la comparación no puede hacerse o no coincide, la operación pasa a `needs_review` y el origen se conserva |
+| Destino ausente, contenido no comparable o diario insuficiente para explicar el estado | La operación pasa a `needs_review`. No se elimina el original de forma automática. La interfaz lo muestra para que la persona decida |
 
-La regla de cierre es única: sin una comprobación positiva del destino y del estado en SQLite, el original no se borra solo.
+La recuperación es idempotente: repetirla sobre el mismo estado no crea una segunda ficha ni borra el original dos veces. Una operación ya `completed`, `failed` o `needs_review` no se vuelve a ejecutar.
+
+La regla de cierre es única: sin una comprobación positiva del destino, del alta y de que el contenido del origen no ha cambiado, el original no se borra solo. El tamaño y la fecha anotados no son esa comprobación.
 
 Las descargas de un archivo nuevo usan el mismo esquema de temporal, verificación y publicación. En ese caso no hay original de la persona usuaria que proteger. Un archivo a medias de una descarga cancelada se retira solo si es el temporal de ese trabajo.
 
@@ -381,7 +383,8 @@ Las descargas de un archivo nuevo usan el mismo esquema de temporal, verificaci�
 2. Rust actualiza la ficha y marca esos campos como editados por la persona usuaria.
 3. Si cambia la imagen, Rust guarda un archivo nuevo en la carpeta de imágenes, ligado a esa ficha, y lo marca como seleccionado.
 4. La portada extraída permanece guardada y deja de ser la imagen seleccionada. No se borra por el hecho de personalizar la ficha.
-5. El archivo multimedia no se reescribe.
+5. El archivo multimedia no se reescribe. La duración que muestra la ficha sigue saliendo del archivo o del motor, no de una edición libre.
+6. Si en otro momento se retira la última referencia de una imagen gestionada, primero se confirma SQLite. Después se intenta borrar solo ese archivo. Un fallo de ese borrado deja el archivo en disco, no revierte la ficha y no provoca el borrado de otros archivos.
 
 Una lectura posterior del archivo puede refrescar los campos de esa ficha que la persona no ha tocado. Los campos editados se mantienen. Otra ficha vinculada al mismo archivo conserva sus propios valores.
 
@@ -400,10 +403,12 @@ La integración de libmpv se incorpora al principio del desarrollo, en la ventan
 
 El adaptador del motor tiene que poder separar la fuente de audio y la fuente de imagen:
 
+Si `visual_preference` es nula, se usa esta precedencia (DC-20). Un valor explícito de la ficha elige portada, vídeo original o vídeo asociado.
+
 | Situación | Audio | Imagen |
 | --- | --- | --- |
-| Canción con portada | Archivo principal de la ficha | Imagen seleccionada de esa ficha |
-| Canción MP4 sin vídeo asociado | Archivo principal de la ficha | Vídeo de ese mismo archivo |
+| Canción con portada, sin vídeo propio ni asociado | Archivo principal de la ficha | Imagen seleccionada de esa ficha |
+| Canción con vídeo en el propio archivo y sin vídeo asociado | Archivo principal de la ficha | Vídeo de ese mismo archivo |
 | Canción con vídeo asociado | Archivo principal de la ficha | Archivo de vídeo asociado, en silencio |
 
 En los tres casos la persona controla una sola reproducción. El vídeo asociado sigue la pausa, la reanudación y la posición de la canción. Con la integración elegida, el vídeo asociado se añade a la misma sesión de mpv (`video-add`), solo suena el archivo principal y los saltos son `relative+exact` para que el audio no quede retenido. Se comprobó en el diagnóstico de F1.4 y F1.5; en el producto llega con F8.2.
@@ -414,15 +419,15 @@ En los tres casos la persona controla una sola reproducción. El vídeo asociado
 2. Rust pide a yt-dlp la vista previa, sin iniciar la descarga.
 3. La persona elige audio o audio y vídeo, formato, calidad y biblioteca.
 4. Rust crea un lote y un elemento por cada pieza de la vista previa. Cada elemento guarda la posición original. Un vídeo suelto es un lote con un elemento en la posición 0.
-5. La cola informa del progreso de cada elemento y del progreso global del lote, calculado a partir de sus elementos.
+5. La cola informa del progreso de cada elemento y del progreso global del lote. Esos porcentajes se calculan y no se guardan. El estado de cada elemento sí se guarda. El lote conserva `cancel_requested` aunque el proceso se cierre antes de actualizar todos los elementos.
 6. FFmpeg participa en las conversiones que la opción elegida requiera.
 7. Al completar un elemento, su archivo queda publicado en la carpeta administrada y se crean su archivo físico y su ficha.
 8. La miniatura descargada se guarda como imagen de esa ficha, distinta de una portada extraída más adelante.
 9. Si el origen era una playlist, las fichas completadas pueden formar una playlist local ordenada por la posición original. Los elementos fallidos conservan su posición y su error.
 
-Cancelar el lote marca como cancelados los elementos que aún no han terminado y conserva los ya completados. Reintentar reutiliza el mismo elemento y la misma posición, e incrementa el contador de intentos. No se crea un segundo elemento para el mismo puesto del lote.
+Cancelar el lote activa `cancel_requested`, marca como cancelados los elementos que aún no han terminado y conserva los ya completados. Si la aplicación se cierra a medias, al arrancar los elementos `queued` o `running` de un lote con la cancelación pedida pasan a `cancelled`. Un elemento `running` de un lote no cancelado vuelve a `queued`, porque el proceso que lo descargaba ya no existe. Reintentar reutiliza el mismo elemento y la misma posición, e incrementa el contador de intentos. No se crea un segundo elemento para el mismo puesto del lote.
 
-La regla con la que se considera que una descarga está duplicada está pendiente. El identificador de lote no sirve como esa regla. El módulo debe dejar un punto claro para esa comprobación antes de publicar el archivo.
+La señal con la que se considera que una descarga está duplicada está pendiente (DP-06). El identificador de lote no sirve como esa regla. Cuando la señal se cumpla, se avisa y no se descarta el contenido en silencio. El módulo debe dejar un punto claro para esa comprobación antes de publicar el archivo.
 
 ### Reconciliar archivos
 
@@ -430,7 +435,7 @@ Un recorrido compara las rutas de los archivos físicos con el disco. Si un arch
 
 Si el método de identidad elegido reconoce el mismo contenido en otra ruta, se actualiza la ruta de ese archivo físico. No se crea una ficha nueva por el renombre. Las fichas que ya lo usaban siguen unidas a él.
 
-Ese método de identidad está pendiente. La reconciliación también cubre cambios hechos a mano dentro de la carpeta administrada. No depende de que exista un modo de referencia externa ni de que se confirme la función de varias fichas por archivo.
+Ese método de identidad está pendiente (DP-05). Las columnas `file_id` y `content_hash` ya existen para usarlo: el identificador de archivo es opcional y no cubre todos los sistemas de archivos ni un cambio de volumen; la huella puede calcularse en ese momento si sigue vacía. La reconciliación también cubre cambios hechos a mano dentro de la carpeta administrada. La referencia externa (DC-19) y la segunda ficha (DC-21) ya están decididas y no cambian esta regla.
 
 ## Adaptadores
 
@@ -449,10 +454,14 @@ Hay tres almacenes. El diario de copia y movimiento vive dentro de SQLite, no en
 | Almacén | Contenido |
 | --- | --- |
 | SQLite | Fichas, archivos físicos, vínculos, imágenes referenciadas, playlists, lotes, diario de operaciones y ajustes |
-| Carpeta administrada | Archivos de música, vídeo y películas copiados o movidos. Un fichero ocupa un solo sitio aunque tenga varias fichas |
-| Carpeta de imágenes | Portadas extraídas, imágenes personalizadas, pósters y miniaturas. Pertenecen a la ficha que las referencia |
+| Carpeta administrada | Archivos de música, vídeo y películas copiados o movidos. Un fichero ocupa un solo sitio aunque tenga varias fichas. Una referencia externa no se copia aquí |
+| Carpeta de imágenes | Portadas extraídas, imágenes personalizadas, pósters y miniaturas. Pertenecen a la ficha que las referencia. Un archivo de imagen sin referencias se conserva si su borrado falló o si una operación pendiente todavía lo nombra |
 
-La ubicación de las carpetas y de la base está pendiente. [DATABASE.md](DATABASE.md) propone la forma de los registros y no la ruta final. Esas tablas no están creadas.
+Las rutas están decididas en DC-22. El directorio local de Tauri guarda la base, `images` y `storage.json`. La carpeta multimedia propuesta es `{FOLDERID_Videos}\Media Center` y no se crea al arrancar. `storage.json` distingue una ruta propuesta de una confirmada y se sustituye de forma atómica. Si la ruta confirmada no está disponible, se conserva. Los temporales recuperables van a `.media-center\incoming`, en el mismo volumen. Los restos desechables van al temporal del sistema, en una carpeta con el identificador de la aplicación. `tauri dev` usa `com.mellk.mediacenter.dev` y propone `Media Center Dev`. Una compilación de producción mantiene `com.mellk.mediacenter`.
+
+Una copia del catálogo reúne una instantánea consistente de la base, con el WAL ya incorporado, la carpeta `images` y `storage.json`. Restaurar el catálogo devuelve esos tres elementos juntos. Los archivos multimedia se respaldan copiando la carpeta administrada. Esta tarea no implementa la copia ni la restauración.
+
+Desinstalar no borra la carpeta multimedia ni, por defecto, el directorio local. Borrar los datos internos en la desinstalación queda como opción explícita de la fase de distribución. [DATABASE.md](DATABASE.md) fija los registros. Esas tablas no están creadas.
 
 ## Límites de la primera versión
 
@@ -472,4 +481,4 @@ La ubicación de las carpetas y de la base está pendiente. [DATABASE.md](DATABA
 | Identidad de un archivo movido | Sin un criterio estable, un renombre puede desenganchar las fichas o crear otra ficha sin querer | Decisión de identidad, antes de la reconciliación |
 | Operación de archivo interrumpida | Un movimiento a medias podría perder el original | El diario y la recuperación de este documento. No se borra el original con incertidumbre |
 | Procesos externos de yt-dlp y FFmpeg | Hace falta localizarlos, limitar el tiempo de espera y explicar un fallo sin dañar la biblioteca | Primera tarea del descargador. Empaquetarlos o exigirlos en la instalación sigue pendiente |
-| Esquema de datos aprobado tarde | Cambiar tablas ya usadas obliga a migrar | Aprobación de [DATABASE.md](DATABASE.md) antes de crear la base. Esta revisión no lo aprueba |
+| Esquema de datos aprobado tarde | Cambiar tablas ya usadas obliga a migrar | Esquema aprobado en F0.2 (DC-18) y rutas en F2.1 (DC-22), antes de crear la base. La migración es F2.2 |

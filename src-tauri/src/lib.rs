@@ -1,6 +1,7 @@
 mod commands;
 #[cfg(all(debug_assertions, windows))]
 mod engine;
+mod storage;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -30,6 +31,12 @@ pub fn run() {
     let builder = builder.invoke_handler(tauri::generate_handler![commands::bridge_check]);
 
     let app = builder
+        .setup(|app| {
+            if let Err(error) = storage::prepare_on_startup(app.handle()) {
+                eprintln!("No se ha podido preparar el almacenamiento interno: {error}");
+            }
+            Ok(())
+        })
         .build(tauri::generate_context!())
         .expect("error while building Media Center");
 

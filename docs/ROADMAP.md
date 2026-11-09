@@ -1,7 +1,7 @@
 # Media Center — Hoja de ruta
 
-Estado del documento: planificación inicial, con la segunda revisión aplicada. El desarrollo ha empezado con la fase 1.  
-Última actualización: 2026-11-06.
+Estado del documento: planificación inicial. El desarrollo ha empezado con la fase 1 y el esquema de datos está aprobado.  
+Última actualización: 2026-11-09.
 
 Cada tarea es un incremento pequeño. No se inicia una tarea hasta cerrar las decisiones de las que depende. El seguimiento vivo está en [PROGRESS.md](PROGRESS.md).
 
@@ -26,7 +26,7 @@ Objetivo: dejar por escrito qué se va a construir y qué decisiones bloquean el
 
 ### F0.2 Revisar y aprobar la propuesta de datos
 
-- **Estado:** pendiente
+- **Estado:** hecha el 2026-11-09. El esquema inicial está aprobado en DC-18. No se ha creado la base ni la migración
 - **Depende de:** F0.4
 - **Descripción:** Responder las preguntas finales de [DATABASE.md](DATABASE.md) y marcar el esquema como aprobado o sustituirlo.
 - **Criterios de aceptación:**
@@ -34,7 +34,6 @@ Objetivo: dejar por escrito qué se va a construir y qué decisiones bloquean el
   - [DATABASE.md](DATABASE.md) pasa a esquema aprobado o se reescribe con el acuerdo.
   - Categorías y colecciones quedan aplazadas a una migración de tablas nuevas, o se incluye otra decisión explícita.
   - La separación entre archivo físico y ficha, los lotes y el diario quedan aceptados o sustituidos por escrito.
-- **Nota:** La segunda revisión no completa esta tarea. El esquema sigue sin aprobar.
 
 ### F0.3 Dejar escritas las condiciones de la integración de libmpv
 
@@ -119,17 +118,17 @@ Objetivo: crear la base aprobada, en una ruta decidida, mediante migraciones.
 
 ### F2.1 Decidir dónde viven la base, los medios y las imágenes
 
-- **Estado:** pendiente
+- **Estado:** hecha el 2026-11-09. Las rutas quedan en DC-22. No se crea la base ni la carpeta multimedia
 - **Depende de:** F0.2
 - **Descripción:** Fijar el directorio de SQLite, el de la carpeta administrada y el de las imágenes.
 - **Criterios de aceptación:**
   - Las tres rutas quedan escritas en [DECISIONS.md](DECISIONS.md).
   - Esas rutas quedan fuera de Git.
-  - La aplicación puede crearlas si no existen.
+  - La aplicación puede crearlas si no existen. La carpeta multimedia solo se crea al confirmarla o al importar de forma explícita.
 
 ### F2.2 Aplicar la primera migración
 
-- **Estado:** bloqueada
+- **Estado:** pendiente
 - **Depende de:** F0.2 y F2.1
 - **Descripción:** Crear el módulo de acceso a SQLite y la migración inicial con las tablas aprobadas.
 - **Criterios de aceptación:**
@@ -168,8 +167,8 @@ Objetivo: incorporar archivos a la biblioteca elegida y crear su ficha, con el p
 - **Descripción:** Ejecutar la operación elegida según DC-14 y registrar el archivo físico y la ficha principal.
 - **Criterios de aceptación:**
   - El diario de la operación queda confirmado antes de alterar el origen.
-  - En el mismo volumen, un movimiento directo se usa cuando el nombre está libre y el renombrado puede recuperarse. Si no, se usa copia, verificación y borrado posterior del original.
-  - Entre volúmenes distintos se copia a un temporal, se verifica el tamaño y el original solo se elimina después del alta confirmada.
+  - En el mismo volumen, un movimiento directo se usa cuando el nombre está libre y el renombrado puede recuperarse. Si no, se usa copia, alta confirmada y borrado posterior del original solo cuando el contenido coincide.
+  - Entre volúmenes distintos se copia a un temporal, se confirma el alta y el original solo se elimina si el contenido del destino coincide con el del origen. El tamaño y la fecha no bastan. Si la comparación no puede completarse, el original se conserva.
   - Un nombre ocupado no se sobrescribe.
   - Sin espacio suficiente el original permanece y no queda un temporal a medias sin registrar.
   - Un fallo de SQLite no elimina el original.
@@ -202,12 +201,12 @@ Elegir la herramienta de etiquetas es una decisión previa a esta tarea. Puede h
 ### F3.5 Segunda ficha sobre el mismo archivo físico
 
 - **Estado:** bloqueada
-- **Depende de:** la confirmación funcional DP-18 y de F3.2
-- **Descripción:** Si se confirma, crear otra ficha en otra biblioteca reutilizando el archivo físico ya administrado. Si se descarta, cerrar la tarea como no aplicable.
+- **Depende de:** F3.2. La función está confirmada en DC-21
+- **Descripción:** Crear otra ficha en otra biblioteca reutilizando el archivo físico ya administrado, sin duplicar el fichero.
 - **Criterios de aceptación:**
-  - Con la opción aprobada, la segunda ficha tiene sus propios metadatos y sus propias imágenes, y el fichero no se duplica.
+  - La segunda ficha tiene sus propios metadatos y sus propias imágenes, y el fichero no se duplica.
   - Eliminar una de las dos fichas deja el archivo disponible para la otra.
-  - Con la opción descartada, la importación sigue creando una sola ficha y la tarea se documenta como cerrada sin esa función.
+  - La importación ordinaria sigue creando una sola ficha.
 
 ## Fase 4 — Consulta de la biblioteca
 
@@ -293,8 +292,8 @@ Objetivo: agrupar fichas en un orden de reproducción.
 ### F6.1 Crear y eliminar playlists
 
 - **Estado:** bloqueada
-- **Depende de:** F4.1 y de la decisión sobre si una playlist mezcla bibliotecas
-- **Descripción:** Altas, cambios de nombre y bajas de playlists en el menú lateral.
+- **Depende de:** F4.1. En la primera versión cada playlist pertenece a una biblioteca. El campo admite nulo para listas mixtas futuras (DC-18)
+- **Descripción:** Altas, cambios de nombre y bajas de playlists en el menú lateral. La aplicación rechaza crear una playlist sin biblioteca y rechaza apariciones de otra biblioteca.
 - **Criterios de aceptación:**
   - Una playlist nueva aparece en el menú lateral.
   - Se puede renombrar.
@@ -427,7 +426,7 @@ Objetivo: acompañar una canción con un vídeo elegido, sin usar el audio de es
 
 - **Estado:** bloqueada
 - **Depende de:** F8.1, F7.3 y F1.5
-- **Descripción:** Mostrar el vídeo asociado en lugar de la portada o del vídeo original, según la preferencia de la ficha.
+- **Descripción:** Mostrar el vídeo asociado en lugar de la portada o del vídeo original, con la regla automática de DC-20 y la elección explícita de la ficha.
 - **Criterios de aceptación:**
   - Se oye el audio de la canción.
   - No se oye el audio del vídeo asociado.
@@ -471,11 +470,12 @@ Objetivo: reconocer desapariciones y movimientos sin borrar fichas ni archivos.
 ### F9.3 Referencias externas
 
 - **Estado:** bloqueada
-- **Depende de:** la decisión de permitir o descartar archivos fuera de la carpeta administrada
-- **Descripción:** Si se aprueba, importar sin copiar ni mover y reconciliar esas rutas. Si se descarta, cerrar la tarea como no aplicable.
+- **Depende de:** F3.2. La referencia externa está confirmada en DC-19 y el esquema ya la admite
+- **Descripción:** Importar sin copiar ni mover y reconciliar esas rutas.
 - **Criterios de aceptación:**
-  - Con la opción aprobada, un archivo referenciado se reproduce desde su ruta original y el registro guarda esa relación.
-  - Con la opción descartada, la importación sigue ofreciendo solo copiar y mover, y la tarea se documenta como cerrada sin esa función.
+  - Un archivo referenciado se reproduce desde su ruta original y el registro guarda esa relación.
+  - La aplicación no mueve, no renombra y no borra ese archivo.
+  - Una ruta que ya está en la carpeta administrada reutiliza el archivo físico existente.
 
 ## Fase 10 — Descargas autorizadas
 
@@ -529,7 +529,7 @@ Objetivo: incorporar enlaces compatibles de YouTube con vista previa, lotes y fi
 
 - **Estado:** bloqueada
 - **Depende de:** F10.3 y de la regla de duplicados
-- **Descripción:** Avisar o impedir una descarga que coincida con la regla aprobada.
+- **Descripción:** Avisar de una descarga que coincida con la regla aprobada, sin descartarla en silencio. La señal que define el duplicado sigue pendiente (DP-06).
 - **Criterios de aceptación:**
   - Un duplicado según la regla aprobada se señala antes de crear otra ficha.
   - La persona puede cancelar esa descarga.
@@ -606,11 +606,13 @@ Objetivo: preparar el instalador, comprobar el paquete, reunir las licencias y d
 ### F12.4 Documentar la instalación
 
 - **Estado:** bloqueada
-- **Depende de:** F12.1, DP-09 y DP-20
+- **Depende de:** F12.1, DC-22 y DP-20
 - **Descripción:** Redactar cómo se instala Media Center en Windows y dónde quedan los datos.
 - **Criterios de aceptación:**
   - La guía indica el sistema de destino y los pasos de instalación.
-  - La guía indica la ruta de la base, de la carpeta administrada y de las imágenes decidida en DP-09.
+  - La guía indica la ruta de la base, de la carpeta administrada y de las imágenes decidida en DC-22.
+  - La guía explica que la desinstalación no borra la carpeta multimedia ni, por defecto, los datos internos. Borrar esos datos es una opción explícita, no el comportamiento por defecto.
+  - La guía explica cómo se copia y se restaura el catálogo: base consistente, imágenes y configuración, aparte de la carpeta multimedia.
   - La guía explica si libmpv, FFmpeg y yt-dlp van dentro del paquete o deben estar disponibles aparte.
   - La guía no describe un servidor ni una cuenta de usuario.
 
@@ -628,9 +630,9 @@ Podrán entrar en una hoja de ruta posterior cuando se decida abordarlas.
 
 ## Orden recomendado
 
-1. La documentación de planificación queda en F0.1, F0.3 y F0.4. F0.2, la aprobación del esquema, sigue pendiente y es previa a la migración.
-2. Al autorizar el desarrollo, empezar por la fase 1: ventana, puente, armazón, integración de libmpv en esa ventana y elección documentada en F1.5.
-3. Construir la persistencia (fase 2) solo después de aprobar el esquema.
+1. La documentación de planificación queda en F0.1, F0.2, F0.3 y F0.4. El esquema inicial está aprobado y la migración todavía no existe.
+2. La fase 1 está hecha: ventana, puente, armazón e integración de libmpv dentro del proceso (DC-17).
+3. F2.1 está hecha. Construir el resto de la persistencia, desde F2.2, cuando se autorice. El esquema y las rutas ya no la bloquean.
 4. Importar, consultar, editar y crear playlists (fases 3 a 6).
 5. Completar la reproducción y el vídeo asociado (fases 7 y 8) con la integración ya elegida.
 6. Añadir la reconciliación de archivos y las descargas por lotes (fases 9 y 10).

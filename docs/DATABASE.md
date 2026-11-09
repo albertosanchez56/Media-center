@@ -1,51 +1,54 @@
-# Media Center — Diseño inicial de datos
+# Media Center — Esquema inicial de datos
 
-Estado del documento: propuesta revisada, pendiente de aprobación.  
-Última actualización: 2026-11-04.
+Estado del documento: esquema inicial aprobado el 2026-11-09 (DC-18).  
+Última actualización: 2026-11-09.
 
-Las tablas de este documento son un punto de partida para revisar. No son el esquema definitivo y no deben crearse hasta que se aprueben. Los nombres, las columnas y las relaciones pueden cambiar. La segunda revisión incorpora la separación entre archivo físico y ficha, las apariciones repetidas en una playlist, los lotes de descarga y el diario de operaciones. Eso no aprueba el esquema.
+Este documento es el esquema de la primera migración. Las rutas están decididas en DC-22. Las tablas no están creadas: falta la tarea F2.2. No se modifica una migración ya aplicada. Categorías y colecciones llegan después, en tablas nuevas (DC-16).
 
-Los requisitos que esta propuesta intenta cubrir están en [REQUIREMENTS.md](REQUIREMENTS.md). Las decisiones que todavía cambian el modelo están en [DECISIONS.md](DECISIONS.md). El procedimiento de archivos que el diario debe poder recuperar está en [ARCHITECTURE.md](ARCHITECTURE.md).
+Los requisitos están en [REQUIREMENTS.md](REQUIREMENTS.md). Las decisiones cerradas y las que siguen abiertas están en [DECISIONS.md](DECISIONS.md). El procedimiento que el diario tiene que poder recuperar está en [ARCHITECTURE.md](ARCHITECTURE.md).
 
-## Criterios que sí orientan el diseño
-
-Estos criterios ya están acordados y la propuesta los respeta:
+## Criterios del esquema
 
 - SQLite guarda la biblioteca. Las imágenes viven en disco y la base guarda la referencia.
-- El archivo físico y la ficha son registros distintos. Un archivo desaparecido no borra las fichas.
-- Varias fichas pueden vincularse al mismo archivo físico. Ofrecer esa función sigue pendiente; el modelo propuesto ya la admite.
-- Los metadatos personalizados y las imágenes pertenecen a cada ficha.
-- Los campos editados por la persona usuaria prevalecen sobre una lectura posterior del archivo.
-- Editar la ficha no reescribe el archivo multimedia.
-- La portada incrustada se extrae a la carpeta de imágenes y el archivo original se conserva igual. La imagen personalizada se guarda aparte.
-- Eliminar una ficha no borra un archivo físico usado por otra ficha, ni ningún archivo físico sin autorización.
-- El esquema evolucionará con migraciones versionadas. Categorías y colecciones entrarían en migraciones posteriores que añaden tablas nuevas.
+- El archivo físico (`stored_files`), la ficha (`media_items`) y el vínculo (`item_files`) son registros distintos.
+- Un mismo archivo físico puede tener varias fichas, en bibliotecas distintas, sin duplicar el fichero (DC-21). La importación confirmada crea una sola ficha. Ofrecer la segunda es F3.5.
+- Un archivo puede quedar referenciado en su ruta original, sin copiarlo ni moverlo (DC-19). La columna existe desde la primera migración. La función se implementa en F9.3.
+- Los metadatos personalizados y las imágenes pertenecen a cada ficha. Editar la ficha no reescribe el archivo multimedia.
+- Los campos que la persona ha editado prevalecen sobre una lectura posterior. La duración real del archivo no es uno de esos campos.
+- La portada incrustada se extrae a la carpeta de imágenes. La imagen personalizada se guarda aparte y no sustituye el archivo extraído (DC-12).
+- Eliminar una ficha quita sus vínculos, sus apariciones y sus filas de imagen. No elimina el archivo físico, aunque sea la última ficha que lo usaba.
+- Una copia de imagen gestionada por Media Center puede borrarse cuando ya no tiene referencias y ninguna operación pendiente la nombra. Si el borrado del archivo falla después de confirmar SQLite, la ficha no se deshace y no se borran otros archivos.
 - Hay tres bibliotecas fijas: Música, Vídeos y Películas.
-- Una canción puede señalar un archivo principal y, aparte, un vídeo asociado.
-- Las playlists son listas ordenadas. La misma ficha puede ocupar varias posiciones.
-- Las descargas se agrupan en lotes. Cada elemento conserva la posición original hasta completarse, fallar, cancelarse o reintentarse.
-- Toda copia o movimiento queda en un diario antes de alterar el origen, para poder recuperarla.
+- Una canción puede tener un vídeo asociado, por vínculo, sin duplicar ese archivo.
+- La presentación visual por defecto es automática. La persona puede elegir otra opción en la ficha (DC-20).
+- Las playlists son listas ordenadas. La misma ficha puede ocupar varias posiciones. En la primera versión cada playlist pertenece a una biblioteca. El campo admite nulo para listas mixtas futuras, sin reconstruir la tabla.
+- Las descargas se agrupan en lotes. Cada elemento guarda su estado. El lote guarda la petición de cancelación. El porcentaje de progreso no se persiste.
+- Un duplicado de descarga se detecta y se avisa. No se descarta en silencio. La señal que lo define sigue pendiente (DP-06).
+- Toda copia o movimiento queda en un diario antes de alterar el origen. Una referencia externa no entra en ese diario, porque no modifica el disco.
+- Antes de eliminar el original de un movimiento, el contenido del destino tiene que coincidir con el del origen. El tamaño y la fecha no bastan. Ante cualquier incertidumbre, el original se conserva.
+- `content_hash` puede quedar vacío en la importación. Se calcula bajo demanda o en segundo plano. En una película grande no es un paso obligatorio del alta.
+- El esquema evoluciona con migraciones versionadas y claves foráneas.
 
-## Qué deja fuera a propósito
+## Qué deja fuera la primera migración
 
-Hasta que haya una decisión, la propuesta no incluye en el esquema inicial tablas de:
+No entran en la primera migración, y siguen pendientes de sus propias decisiones:
 
-- Categorías personalizadas.
-- Colecciones.
-- Referencias a archivos que permanecen fuera de la carpeta administrada.
-- Letras, estadísticas, identificadores de MusicBrainz o TMDB, ni datos de una aplicación móvil.
+- Categorías personalizadas (DP-02).
+- Colecciones (DP-03).
+- Letras, estadísticas, identificadores de MusicBrainz o TMDB.
+- Cola de reproducción persistida y búsqueda FTS5 (DP-12).
+- La organización interna de la carpeta administrada, salvo el directorio reservado `.media-center\incoming` para los temporales recuperables (DC-22).
+- Una columna de número de pista. Cabrá después con `ADD COLUMN`.
 
-Tampoco fija el algoritmo de hash, la ruta de la base de datos ni si la cola de reproducción se persiste.
-
-La sección «Migraciones posteriores» indica cómo podrían añadirse categorías y colecciones sin reescribir las tablas iniciales. Ese boceto tampoco está aprobado y no forma parte de la primera migración.
+La sección «Migraciones posteriores» muestra cómo podrían añadirse categorías y colecciones. Ese boceto no está aprobado y no forma parte de la primera migración.
 
 ## Enfoque general
 
-Una **ficha** (`media_items`) es lo que la persona ve en una biblioteca. Un **archivo físico** (`stored_files`) es un fichero de la carpeta administrada. Un **vínculo** (`item_files`) une una ficha con un archivo y le da un papel: contenido principal o vídeo asociado.
+Una **ficha** es lo que la persona ve en una biblioteca. Un **archivo físico** es un fichero en disco: dentro de la carpeta administrada o, cuando la referencia se implemente, en su ruta original. Un **vínculo** une una ficha con un archivo y le da un papel: contenido principal o vídeo asociado.
 
-Los campos visibles salen de la ficha. Una instantánea de lo importado permite saber qué cambió la persona usuaria en esa ficha y qué puede refrescarse si el archivo se vuelve a leer. Otra ficha del mismo archivo tiene su propia instantánea.
+Los campos visibles salen de la ficha. `imported_snapshot` guarda lo leído para esa ficha. `user_edited_fields` lista lo que la persona ha cambiado en ella. Otra ficha del mismo archivo tiene su propia instantánea. `duration_ms` no entra en esa lista: la actualizan el archivo y el motor.
 
-Las imágenes no se guardan como blobs. Cada imagen de una ficha es un archivo en la carpeta de imágenes y una fila que guarda la ruta relativa. La portada extraída y la imagen personalizada son filas distintas.
+Las imágenes no se guardan como blobs. Cada imagen de una ficha es un archivo en la carpeta de imágenes y una fila con la ruta relativa.
 
 ```
 stored_files
@@ -58,296 +61,297 @@ media_items
 download_batches
     download_jobs        un elemento por posición de origen
 
-file_operations          diario de copia y movimiento
+file_operations          diario de copia, movimiento y publicación de descargas
 schema_migrations        control de versiones del esquema
+app_settings             ajustes locales
 ```
 
-Artistas, álbumes y géneros se proponen como texto en la ficha para la primera versión. Normalizarlos en tablas propias mejoraría los filtros y se puede añadir después con una migración, cuando se conozcan los filtros reales.
+Artista, álbum y género son texto en la ficha. Normalizarlos en tablas propias puede hacerse en una migración posterior, cuando se conozcan los filtros reales (DP-12).
 
-## Tablas propuestas
+## Reglas comunes de SQLite
 
-Los tipos son orientativos de SQLite. `id` sería una clave entera autogenerada. Las fechas se guardarían en UTC, en texto ISO-8601, salvo que al aprobar el esquema se prefiera otro formato.
+La primera migración crea las tablas de este documento como tablas `STRICT`. `id` es una clave entera autogenerada. Las fechas se guardan en texto ISO-8601 UTC.
+
+Cada conexión abre con claves foráneas activas, diario WAL, `synchronous = FULL` y un tiempo de espera si la base está ocupada. El diario de una operación se confirma con esa sincronización antes de renombrar o copiar el origen.
+
+Las migraciones son SQL numerado, embebido en la aplicación. Cada una se aplica en una transacción y se registra en `schema_migrations`. Cambiar un enumerado de un `CHECK` más adelante exige una migración que reconstruya la tabla y lo deje documentado.
+
+La clave de ruta `path_key` la calcula la aplicación antes de insertar. Usa separadores `/`, prescinde del prefijo `\\?\`, normaliza a NFC y pliega mayúsculas con la API de Windows. El `NOCASE` de SQLite solo pliega ASCII y no sirve para distinguir `café` de `CAFÉ`. El índice único es sobre esa clave ya normalizada. Además, la aplicación pregunta al sistema de archivos antes de reservar un nombre, por los nombres cortos 8.3 y los espacios finales.
+
+## Tablas
 
 ### schema_migrations
 
-Registro de migraciones ya aplicadas.
-
-| Columna | Idea |
+| Columna | Restricción |
 | --- | --- |
-| version | Número entero de la migración, clave primaria |
+| version | Entero, clave primaria |
 | name | Nombre breve del cambio |
 | applied_at | Momento en que se aplicó |
 
 ### stored_files
 
-Identidad de un archivo dentro de la carpeta administrada.
+Identidad de un archivo en disco.
 
-| Columna | Idea |
+| Columna | Restricción |
 | --- | --- |
-| id | Identificador del archivo físico |
-| relative_path | Ruta relativa a la carpeta administrada. Única en la propuesta |
+| id | Clave primaria |
+| storage | `managed` o `external` |
+| path | Ruta tal como la devuelve el sistema. Relativa a la carpeta administrada si `storage` es `managed`. Absoluta si es `external` |
+| path_key | Clave normalizada. Única |
 | size_bytes | Tamaño en la última comprobación |
 | modified_at | Fecha de modificación del fichero en esa comprobación |
-| content_hash | Huella del contenido, nula hasta que se elija el algoritmo |
+| content_hash | Huella del contenido, anulable. No es obligatoria al importar |
+| file_id | Identificador de archivo del volumen, anulable. En NTFS puede sobrevivir a un renombrado dentro del mismo volumen. En FAT, exFAT, red o al copiar entre volúmenes puede no existir o cambiar |
 | container | Contenedor o extensión informativa, por ejemplo `mp4` o `flac` |
 | status | `available` o `missing` |
-| missing_since | Momento en que se detectó la ausencia; nulo si está disponible |
-| source_url | Enlace de origen si el archivo llegó por descarga; nulo si fue importado |
+| missing_since | Momento en que se detectó la ausencia. Nulo si está disponible |
 | created_at | Alta del registro |
 | updated_at | Último cambio |
 
-No hay modo `external` en esta propuesta. Añadirlo sería el cambio natural si se aprueba referenciar archivos fuera de la carpeta administrada. En ese caso haría falta una ruta absoluta o una raíz distinta, y `relative_path` dejaría de bastar por sí solo.
+La aplicación valida que `path` sea relativa cuando `storage` es `managed` y absoluta cuando es `external`. Una ruta que cae dentro de la carpeta administrada no se guarda como `external`: se reutiliza la fila existente.
+
+Una fila `external` no se mueve, no se renombra y no se borra por una operación de la aplicación. La importación por referencia no crea fila en `file_operations`.
+
+`content_hash` se rellena bajo demanda o en segundo plano. El alta de una película grande no espera a esa huella. El algoritmo concreto sigue sin fijarse; la columna no cambia cuando se elija. La comparación de contenido que autoriza borrar un original puede calcular la huella en ese momento y guardarla aquí.
+
+El enlace de una descarga no se guarda en esta tabla. Vive en `download_jobs`.
 
 ### media_items
 
 Ficha visible de una biblioteca.
 
-| Columna | Idea |
+| Columna | Restricción |
 | --- | --- |
-| id | Identificador de la ficha |
-| library | `music`, `video` o `movie` |
+| id | Clave primaria |
+| library | `music`, `video` o `movie`. Obligatoria |
 | title | Título visible |
-| artist | Texto de artista o intérprete; vacío si no aplica |
-| album | Texto de álbum; vacío si no aplica |
-| genre | Texto de género; vacío si no aplica |
+| artist | Texto de artista o intérprete. Vacío si no aplica |
+| album | Texto de álbum. Vacío si no aplica |
+| genre | Texto de género. Vacío si no aplica |
 | year | Año, nulo si se desconoce |
-| description | Descripción de vídeo o película; vacía si no aplica |
-| duration_ms | Duración conocida, nula hasta que el motor o el archivo la aporten |
+| description | Descripción de vídeo o película. Vacía si no aplica |
+| duration_ms | Duración conocida, nula hasta que el archivo o el motor la aporten. No es editable por la persona |
 | favorite | Entero 0 o 1 |
-| visual_preference | Preferencia de imagen de una canción. Valores propuestos: `cover`, `embedded_video`, `associated_video`. Nulo en vídeos y películas |
-| resume_position_ms | Posición guardada. El requisito la exige para películas; usarla también en vídeos o música queda pendiente |
-| imported_snapshot | Texto JSON con los valores leídos para esta ficha |
-| user_edited_fields | Texto JSON con la lista de campos que la persona ha modificado en esta ficha |
+| visual_preference | Nula, `cover`, `original_video` o `associated_video`. Nula significa la regla automática de DC-20 |
+| resume_position_ms | Posición guardada, anulable. La aplicación solo la escribe en películas mientras DP-13 siga abierta |
+| imported_snapshot | Texto JSON válido con los valores leídos para esta ficha |
+| user_edited_fields | Texto JSON válido con los campos que la persona ha modificado. No incluye `duration_ms` |
 | created_at | Alta de la ficha |
 | updated_at | Último cambio de la ficha |
 
-`visual_preference` existe para no decidir en silencio si un vídeo asociado sustituye siempre a la portada. Si se aprueba otra regla, la columna puede simplificarse.
+Campos que la persona puede editar: título, artista, álbum, género, año, descripción, favorito, preferencia visual e imágenes. Una relectura del archivo refresca el resto, incluida la duración.
 
-`imported_snapshot` y `user_edited_fields` son la propuesta concreta para la prioridad de los cambios personales de cada ficha. Una tabla de procedencia por campo sería más estricta y más verbosa. Conviene elegir una de las dos al aprobar el esquema.
-
-La biblioteca vive en la ficha. Así dos fichas del mismo archivo físico pueden pertenecer a bibliotecas distintas si la función pendiente llega a confirmarse. La importación confirmada crea una sola ficha.
+La biblioteca vive en la ficha. Dos fichas del mismo archivo pueden pertenecer a bibliotecas distintas.
 
 ### item_files
 
 Vínculo entre ficha y archivo físico.
 
-| Columna | Idea |
+| Columna | Restricción |
 | --- | --- |
-| id | Identificador del vínculo |
-| media_item_id | Ficha |
-| stored_file_id | Archivo físico |
+| id | Clave primaria |
+| media_item_id | Clave foránea a `media_items`, `ON DELETE CASCADE` |
+| stored_file_id | Clave foránea a `stored_files`, `ON DELETE RESTRICT` |
 | role | `primary` o `associated_video` |
 | created_at | Alta del vínculo |
 
-Índice único propuesto de (`media_item_id`, `role`): una ficha tiene un contenido principal y, como mucho, un vídeo asociado.
+Índice único parcial de `role = 'primary'`: una ficha, un contenido principal. Índice único parcial de `role = 'associated_video'`: como mucho un vídeo asociado. No hay índice único sobre `stored_file_id`.
 
-No se propone un índice único sobre `stored_file_id`. Varias fichas pueden apuntar al mismo archivo. La aplicación, mientras B-11 no esté confirmada, crea un solo vínculo principal al importar.
+La aplicación solo crea `associated_video` en fichas de música. Quitar la asociación borra el vínculo, no el archivo.
 
-Borrar una fila de `item_files` no borra `stored_files`. Borrar una ficha puede borrar sus vínculos. No puede borrar el archivo físico si queda algún vínculo, y tampoco lo borra sin autorización cuando el vínculo era el último.
+`ON DELETE RESTRICT` impide borrar un archivo físico mientras exista un vínculo. Cuando ya no queda ninguno, el archivo tampoco se borra solo: hace falta una autorización explícita (DC-07).
 
 ### media_images
 
-Imágenes de trabajo de una ficha.
+Imágenes de trabajo de una ficha. El tipo visual se deduce de la biblioteca: portada, miniatura o póster. No hay columna `kind`.
 
-| Columna | Idea |
+| Columna | Restricción |
 | --- | --- |
-| id | Identificador de la imagen |
-| media_item_id | Ficha dueña |
-| kind | `cover`, `poster` o `thumbnail` |
+| id | Clave primaria |
+| media_item_id | Clave foránea a `media_items`, `ON DELETE CASCADE` |
 | source | `embedded`, `download` o `user` |
-| relative_path | Ruta relativa a la carpeta de imágenes |
-| selected | Entero 0 o 1; la imagen que se muestra para ese `kind` |
+| relative_path | Ruta relativa a la carpeta de imágenes, generada por la aplicación |
+| selected | Entero 0 o 1 |
 | created_at | Alta |
 | updated_at | Último cambio |
 
-Al importar, la portada incrustada se copia a la carpeta de imágenes y se registra con `source = embedded`. El archivo multimedia no se modifica.
+Índice único parcial: una sola fila con `selected = 1` por ficha. La fila `embedded` permanece, con `selected = 0`, cuando la seleccionada es `user` (DC-12).
 
-Sustituir la portada añade una fila `source = user`, la marca como seleccionada y deja la fila `embedded` guardada. La imagen personalizada y la portada extraída son archivos distintos.
+Al importar, la portada incrustada se copia a la carpeta de imágenes y se registra con `source = embedded`. El archivo multimedia no se modifica. Primero se escribe el archivo de imagen y después la fila.
 
-Cada ficha tiene sus propias filas. Personalizar una ficha no cambia las imágenes de otra ficha vinculada al mismo archivo físico.
+Cada ficha tiene sus propias filas. Personalizar una ficha no cambia las imágenes de otra ficha del mismo archivo físico.
 
-Se propone un índice único parcial, o una regla equivalente en la aplicación, para que cada ficha tenga como mucho una imagen seleccionada por cada `kind`.
+Borrado del archivo de imagen:
+
+1. Se confirma en SQLite la retirada de la fila, o de la ficha que la arrastra en cascada.
+2. Solo entonces se intenta borrar el archivo, y solo si ninguna fila de `media_images` sigue usando esa ruta y ninguna `file_operations` pendiente la nombra.
+3. Se borra una ruta identificada cada vez.
+4. Si el borrado físico falla, la transacción de SQLite no se deshace. La ficha queda como quedó confirmada. No se borran otros archivos para compensar. El archivo que no se pudo quitar permanece y puede retirarse más adelante con las mismas comprobaciones.
+5. Al arrancar no se recorre la carpeta de imágenes para borrar huérfanos.
 
 ### playlists
 
-| Columna | Idea |
+| Columna | Restricción |
 | --- | --- |
-| id | Identificador |
+| id | Clave primaria |
 | name | Nombre visible |
-| description | Texto opcional |
-| library | Biblioteca a la que pertenece, o nulo si al final se permiten mezclas |
-| source_url | Enlace de la playlist de origen, nulo si es local desde el principio |
+| description | Texto opcional, anulable |
+| library | Anulable: `music`, `video` o `movie` |
+| source_url | Enlace de la playlist de origen. Nulo si es local desde el principio |
 | created_at | Alta |
 | updated_at | Último cambio |
 
-La columna `library` refleja la duda abierta de si una playlist mezcla bibliotecas. Si la respuesta es que cada playlist pertenece a una sola biblioteca, la columna pasa a ser obligatoria.
+En la primera versión la aplicación rechaza crear una playlist con `library` nula. Con biblioteca, rechaza apariciones de fichas de otra biblioteca. No hay un `CHECK` que cruce tablas: es una regla de la aplicación. Una playlist mixta futura usará `NULL` y no necesita migración.
 
 ### playlist_items
 
 Apariciones ordenadas. La misma ficha puede aparecer más de una vez.
 
-| Columna | Idea |
+| Columna | Restricción |
 | --- | --- |
-| id | Identificador de la aparición, clave primaria |
-| playlist_id | Playlist |
-| media_item_id | Ficha incluida en esta aparición |
-| position | Orden entero dentro de la playlist, empezando en 0 |
+| id | Clave primaria de la aparición |
+| playlist_id | Clave foránea a `playlists`, `ON DELETE CASCADE` |
+| media_item_id | Clave foránea a `media_items`, `ON DELETE CASCADE` |
+| position | Orden entero dentro de la playlist, desde 0. Único junto con `playlist_id` |
 
-Índice único propuesto de (`playlist_id`, `position`), para que cada puesto tenga una sola aparición.
+No hay unicidad de (`playlist_id`, `media_item_id`). Quitar una aparición borra esa fila y no borra la ficha, el archivo ni las demás apariciones. Borrar la ficha borra sus apariciones.
 
-No hay unicidad de (`playlist_id`, `media_item_id`). Quitar una aparición borra esa fila y no borra la ficha, el archivo ni las demás apariciones de la misma ficha. Al reordenar se reasignan las posiciones.
+Reordenar se hace en una transacción de dos pasos, porque SQLite comprueba la unicidad fila a fila.
 
 ### download_batches
 
 Una petición de descarga: un vídeo suelto o una playlist completa.
 
-| Columna | Idea |
+| Columna | Restricción |
 | --- | --- |
-| id | Identificador del lote |
+| id | Clave primaria |
 | source_url | Enlace pedido. En una playlist, el enlace de la playlist |
 | kind | `single` o `playlist` |
-| library | Biblioteca de destino |
+| library | `music`, `video` o `movie`. Obligatoria |
 | mode | `audio` o `audio_video` |
 | format | Formato pedido |
 | quality | Calidad pedida |
-| status | `queued`, `running`, `completed`, `partial`, `failed` o `cancelled` |
+| cancel_requested | Entero 0 o 1. La intención de cancelar el lote, y sobrevive a un cierre |
 | created_at | Alta |
 | updated_at | Último cambio |
 
-`partial` cubre un lote en el que unos elementos terminaron y otros fallaron o se cancelaron. El progreso global no se guarda en una columna: se calcula con los estados y el progreso de sus elementos.
+No hay columna de estado ni de progreso del lote. Se calculan con los elementos. `cancel_requested` no se calcula: es la petición de la persona.
+
+Al arrancar, si `cancel_requested` está activo, los elementos que hayan quedado en `queued` o `running` pasan a `cancelled`.
 
 ### download_jobs
 
-Un elemento del lote, con la posición que tenía en el origen.
+Un elemento del lote, con su estado persistente y la posición que tenía en el origen.
 
-| Columna | Idea |
+| Columna | Restricción |
 | --- | --- |
-| id | Identificador del elemento |
-| batch_id | Lote |
-| position | Posición original, empezando en 0. Estable entre reintentos |
+| id | Clave primaria |
+| batch_id | Clave foránea a `download_batches`, `ON DELETE CASCADE` |
+| position | Posición original, desde 0. Estable entre reintentos. Única junto con `batch_id` |
 | source_url | Enlace del elemento |
-| source_key | Identificador estable del contenido remoto, cuando la vista previa lo aporte |
+| source_key | Identificador estable del contenido remoto, cuando la vista previa lo aporte. Anulable. Índice no único |
 | title | Título de la vista previa |
 | status | `queued`, `running`, `completed`, `failed` o `cancelled` |
-| progress | Valor numérico de 0 a 100, orientativo de este elemento |
-| error | Mensaje breve si el estado es `failed` |
-| attempt_count | Veces que se ha intentado. Un reintento suma uno y conserva la fila y la posición |
-| media_item_id | Ficha creada al completar; nula antes de eso |
-| stored_file_id | Archivo físico publicado al completar; nulo antes de eso |
+| error | Mensaje breve si el estado es `failed`. Anulable |
+| attempt_count | Veces que se ha intentado |
+| media_item_id | Ficha creada al completar. Anulable. `ON DELETE SET NULL` |
+| stored_file_id | Archivo físico publicado al completar. Anulable. `ON DELETE SET NULL` |
 | created_at | Alta |
 | updated_at | Último cambio |
 
-Índice único propuesto de (`batch_id`, `position`).
+No hay columna de porcentaje. El progreso de un elemento en curso es volátil y se comunica por eventos. El estado sí se guarda.
 
-Un vídeo individual tiene un lote `single` y un elemento en la posición 0. Cancelar el lote cancela los elementos que siguen en cola o en curso y deja los completados. Reintentar no inserta otra fila para la misma posición.
+Un vídeo individual tiene un lote `single` y un elemento en la posición 0. Reintentar reutiliza la fila y suma `attempt_count`. Al arrancar, un elemento `running` de un lote que no está cancelado vuelve a `queued`: el proceso que lo descargaba ya no existe. Los estados `completed`, `failed` y `cancelled` se conservan.
 
-`source_key` se deja preparado para la detección de duplicados sin fijar todavía si el duplicado se decide por enlace, por identificador del vídeo, por huella del archivo o por una combinación. El `id` del lote no es esa regla.
+`source_key` prepara la detección de duplicados. No es único: la persona puede confirmar una descarga repetida. La señal que define el duplicado sigue en DP-06. El comportamiento ya acordado es avisar y no descartar el contenido en silencio.
 
-La playlist local resultante, cuando se cree, usa las fichas de los elementos completados ordenadas por `position`.
+La publicación del archivo usa `file_operations` con `kind = 'download'`. No hay original de la persona usuaria que borrar. La playlist local, cuando se cree, usa las fichas de los elementos completados ordenadas por `position`.
 
 ### file_operations
 
-Diario de cada copia o movimiento. La fila se confirma antes de alterar el origen.
+Diario de cada copia, movimiento o publicación de una descarga. La fila se confirma antes de alterar el origen.
 
-| Columna | Idea |
+| Columna | Restricción |
 | --- | --- |
-| id | Identificador de la operación |
-| kind | `copy` o `move` |
-| volume_case | `same` o `different`. En `same`, la operación puede haber usado renombrado directo o la copia de reserva |
-| source_path | Ruta absoluta del origen |
-| temp_relative_path | Temporal dentro de la carpeta administrada; nulo si el movimiento directo no lo necesita |
-| destination_relative_path | Nombre definitivo reservado, distinto de cualquier archivo ya presente |
+| id | Clave primaria |
+| kind | `copy`, `move` o `download` |
+| method | `rename` o `copy` |
+| library | Biblioteca de destino. Permite completar el alta en la recuperación |
+| source_path | Ruta absoluta del origen. En una descarga, el temporal producido por la herramienta, no un archivo de la persona |
 | source_size_bytes | Tamaño anotado antes de tocar el origen |
-| stage | Ver la lista de etapas |
-| media_item_id | Ficha creada al confirmar el alta; nula antes |
-| stored_file_id | Archivo físico creado al confirmar el alta; nulo antes |
-| error | Texto breve en `failed` o `needs_review` |
+| source_modified_at | Fecha de modificación anotada. Anulable en una descarga |
+| temp_relative_path | Temporal dentro de la carpeta administrada. Nulo si el movimiento directo no lo usa |
+| destination_relative_path | Nombre definitivo reservado, distinto de cualquier archivo ya presente |
+| stage | Una de las etapas de la lista siguiente |
+| media_item_id | Ficha creada al confirmar el alta. Anulable. `ON DELETE SET NULL` |
+| stored_file_id | Archivo físico creado al confirmar el alta. Anulable. `ON DELETE SET NULL` |
+| error | Texto breve en `failed` o `needs_review`. Anulable |
 | created_at | Alta |
 | updated_at | Último cambio |
 
-Etapas propuestas: `planned`, `transferring`, `verifying`, `ready_for_db`, `db_committed`, `source_delete_pending`, `completed`, `failed`, `needs_review`.
+Etapas: `planned`, `transferring`, `verifying`, `ready_for_db`, `db_committed`, `source_delete_pending`, `completed`, `failed`, `needs_review`.
 
-El significado de cada etapa y lo que la recuperación puede borrar están en [ARCHITECTURE.md](ARCHITECTURE.md). La recuperación no elimina el origen en `needs_review`.
+Una importación por referencia no crea fila. Si la transacción del alta falla, no queda nada a medias en disco.
+
+Recuperación, al arrancar y repetible sobre el mismo estado:
+
+- Origen intacto y temporal ausente o a medias: se borra solo ese temporal y la operación pasa a `failed`. El original se conserva.
+- Destino presente y alta sin confirmar: se completa el alta una sola vez. Si `media_item_id` ya existe, no se crea otra ficha. El original se conserva.
+- Alta confirmada, movimiento, destino presente y origen todavía presente: el original solo se borra si una comparación de contenido demuestra que el destino coincide con el origen. El tamaño y `source_modified_at` no autorizan ese borrado por sí solos. Si la comparación no puede completarse, no coincide, o el diario no basta para explicar el estado, la operación pasa a `needs_review` y el original se conserva.
+- Una operación `completed`, `failed` o `needs_review` no se vuelve a ejecutar. `needs_review` espera a la persona.
+
+El detalle de cada etapa está en [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ### app_settings
 
-Pares clave-valor para preferencias locales: volumen, modo de repetición u otras que se decida conservar.
-
-| Columna | Idea |
+| Columna | Restricción |
 | --- | --- |
-| key | Clave primaria de texto |
+| key | Texto, clave primaria |
 | value | Texto |
 
-La posición de una película no va aquí. Va en la ficha, porque es propia de ese elemento.
+La posición de una película no se guarda aquí. Va en `media_items.resume_position_ms`.
 
-## Relaciones
+## Relaciones al borrar
 
-- Un archivo físico tiene uno o varios vínculos.
-- Una ficha tiene un vínculo principal y, si es una canción, puede tener un vínculo de vídeo asociado.
-- Una ficha tiene cero o varias imágenes propias.
-- Una ficha tiene cero o varias apariciones de playlist.
-- Un lote tiene uno o varios elementos ordenados por la posición de origen.
-- Un elemento completado apunta, como mucho, a una ficha y a un archivo físico.
-- Una operación de archivo apunta a la ficha y al archivo físico solo después de confirmar el alta.
-- Borrar una aparición no borra la ficha.
-- Borrar los vínculos de una ficha no borra `stored_files` mientras otra ficha lo use.
-- No hay borrado en cascada desde la ficha hacia el archivo físico.
+- Borrar una ficha borra sus vínculos, sus apariciones y sus filas de imagen. Los archivos de imagen se intentan borrar después, con la política de `media_images`. El archivo físico permanece.
+- Borrar un archivo físico está prohibido mientras un vínculo lo señale. Sin vínculos, solo una acción autorizada puede borrarlo.
+- Borrar una playlist borra sus apariciones. Las fichas siguen.
+- Borrar un lote borra sus elementos. Las fichas y los archivos ya publicados siguen. Si se borra la ficha, el elemento deja esas referencias a nulo.
+- Borrar una ficha no borra el historial de `file_operations` ni de `download_jobs`: las referencias quedan a nulo.
 
-La política general de borrar una ficha, más allá de esta protección, sigue sin estar pedida como función de la primera versión. Cuando exista, tendrá que respetar la autorización para cualquier archivo físico.
+## Identidad de un archivo
 
-## Integridad que conviene decidir al aprobar
+Las columnas están desde la primera migración. La reasignación automática de una ruta sigue pendiente (DP-05) y no se implementa antes de F9.2. Mientras tanto, si el archivo falta en su ruta, pasa a `missing` y las fichas se conservan.
 
-1. Claves foráneas activadas en SQLite.
-2. `library` limitado a los tres valores, tanto en fichas como en lotes.
-3. `role`, `status`, `kind`, `source` y los estados de descarga y de operación limitados a los valores de esta propuesta, o a los que se aprueben en su lugar.
-4. `position` única dentro de cada playlist y dentro de cada lote.
-5. `relative_path` único en `stored_files`.
-6. El diario se inserta y se confirma antes de renombrar o copiar el origen.
-7. La transacción que crea ficha, archivo físico y vínculo ocurre cuando el destino ya está verificado. Si esa transacción falla, el origen de un movimiento sigue en su sitio.
-8. `item_files.stored_file_id` no usa borrado en cascada del archivo físico.
+Cuando F9.2 fije la regla, las señales disponibles serán, en este orden de uso previsto:
+
+1. La ruta, con el mismo tamaño y la misma fecha, sigue disponible.
+2. Si falta en la ruta, `file_id` puede reconocerlo tras un renombrado dentro del mismo volumen que conserve ese identificador.
+3. Si no hay `file_id`, o el archivo cambió de volumen o de sistema de archivos, se comparan candidatos del mismo tamaño mediante `content_hash`, calculada en ese momento si todavía es nula.
+4. Una sola coincidencia segura actualiza la ruta. Varias, o ninguna, dejan el archivo en `missing`. No se crea una ficha nueva.
 
 ## Migraciones posteriores
 
-La primera migración, cuando el esquema se apruebe, crearía las tablas aceptadas de este documento. Categorías y colecciones no entrarían en ella.
+La primera migración crea las tablas de este documento y no crea las siguientes. Si se confirman sus reglas, una migración nueva solo añadirá tablas. No añadirá columnas de categoría o de colección a `media_items`, `stored_files`, `item_files`, `playlists` ni `playlist_items`.
 
-Si más adelante se confirman sus reglas, una migración nueva solo añadiría tablas. No añadiría columnas a `media_items`, `stored_files`, `item_files`, `playlists` ni `playlist_items` para representarlas.
-
-Boceto no definitivo, excluido de la primera migración:
+Boceto excluido de la primera migración y no aprobado:
 
 | Tabla futura | Papel |
 | --- | --- |
-| `categories` | Nombre y reglas que se aprueben. Una jerarquía, si se elige, sería una columna de esta tabla nueva |
+| `categories` | Nombre y reglas que se aprueben |
 | `item_categories` | Vínculo entre ficha y categoría |
 | `collections` | Agrupación distinta de la playlist, cuando se defina |
-| `collection_items` | Fichas de una colección. La posición sería nula si la colección no tiene orden |
+| `collection_items` | Fichas de una colección |
 
-Esas cuatro tablas se ajustarían a la decisión real. Sirven para comprobar que la evolución cabe en tablas nuevas. No se crean con el esquema inicial y sus columnas no están aprobadas.
-
-Cada cambio posterior sería una migración nueva, con su número en `schema_migrations`. No se modificaría una migración ya aplicada.
+Cada cambio posterior es una migración nueva, con su número en `schema_migrations`.
 
 ## Ejemplo de lectura
 
-Para pintar una canción, la aplicación haría conceptualmente lo siguiente:
+Para pintar una canción, la aplicación:
 
-1. Leer la ficha en `media_items`.
-2. Leer su vínculo `primary` y, si existe, el `associated_video`.
-3. Leer los `stored_files` de esos vínculos.
-4. Leer las imágenes de esa ficha y usar la seleccionada. La fila `embedded` sigue disponible aunque la seleccionada sea `user`.
-5. Elegir la presentación con `visual_preference` y con los archivos realmente disponibles.
-6. Si el archivo físico está `missing`, mostrar la ficha y indicar que el archivo no está disponible.
-
-## Preguntas para aprobar este diseño
-
-El esquema sigue pendiente mientras estas preguntas no tengan respuesta en [DECISIONS.md](DECISIONS.md):
-
-1. ¿Los campos editados se guardan con una instantánea JSON o con una fila por campo?
-2. ¿Artista, álbum y género se quedan como texto en la primera versión?
-3. ¿Una playlist pertenece a una sola biblioteca?
-4. ¿La posición de reanudación se guarda solo en películas?
-5. ¿Hace falta persistir la cola y el modo aleatorio?
-6. ¿Qué identifica un duplicado de descarga?
-7. ¿Se acepta aplazar categorías y colecciones a una migración que solo añada tablas?
-8. ¿Se aceptan `stored_files`, `item_files`, `download_batches` y `file_operations` con la forma de esta propuesta?
-9. ¿Se acepta que `playlist_items` identifique cada aparición por su propio `id` y permita repetir la ficha?
-
-La pregunta 9 ya tiene una dirección pedida para la propuesta: las repeticiones se permiten. Al aprobar el esquema habrá que aceptarla de forma explícita o sustituirla. Hasta entonces no hay tablas creadas.
+1. Lee la ficha en `media_items`.
+2. Lee su vínculo `primary` y, si existe, el `associated_video`.
+3. Lee los `stored_files` de esos vínculos.
+4. Lee las imágenes de esa ficha y usa la seleccionada. La fila `embedded` sigue disponible aunque la seleccionada sea `user`.
+5. Elige la presentación con DC-20: si `visual_preference` es nula, vídeo asociado si existe, si no el vídeo del propio archivo si corresponde, si no la portada. Un valor de la columna es la elección explícita.
+6. Si el archivo físico está `missing`, muestra la ficha e indica que el archivo no está disponible.
