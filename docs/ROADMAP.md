@@ -191,9 +191,9 @@ MP3, FLAC y M4A/MP4 se leen. Si la etiqueta trae título, artista, álbum, géne
 
 ### F3.4 Importar un MP4 a cualquiera de las tres bibliotecas
 
-- **Estado:** bloqueada
+- **Estado:** hecha el 2026-11-11
 - **Depende de:** F3.2
-- **Descripción:** Comprobar que el contenedor no decide la biblioteca.
+- **Descripción:** El contenedor no decide la biblioteca. Tres MP4 independientes, cada uno con una pista de vídeo y otra de audio, se guardan como música, vídeo o película según la elección hecha al importar. Cada importación crea una ficha, conserva las etiquetas y la portada, y no reutiliza el archivo físico de otra ficha. Un MP4 sin pista de audio también se importa: lofty 0.25.5 no lee sus etiquetas porque exige una pista de audio, así que la ficha queda provisional y conserva la biblioteca elegida. La pieza de prueba llamada `write_mp4` sigue siendo un M4A solo de audio; no se usa como prueba de vídeo. Reutilizar un mismo archivo en varias bibliotecas sigue en F3.5. La lista visual sigue en F4.1.
 - **Criterios de aceptación:**
   - El mismo tipo de archivo MP4 puede guardarse como música, como vídeo o como película según la elección hecha al importar.
   - La importación crea una ficha y aparece en la biblioteca elegida.
@@ -632,7 +632,7 @@ Podrán entrar en una hoja de ruta posterior cuando se decida abordarlas.
 
 1. La documentación de planificación queda en F0.1, F0.2, F0.3 y F0.4. El esquema inicial está aprobado y la migración 1 ya está creada.
 2. La fase 1 está hecha: ventana, puente, armazón e integración de libmpv dentro del proceso (DC-17).
-3. F2.1, F2.2, F2.3, F3.1, F3.2 y F3.3 están hechas. La ficha de un MP3, FLAC o M4A/MP4 usa las etiquetas leídas y, si hay portada admitida, la guarda aparte. MKV y WebM quedan con el título provisional. La lista de la biblioteca sigue en F4.1. La escritura de etiquetas sigue en DP-11.
+3. F2.1, F2.2, F2.3, F3.1, F3.2, F3.3 y F3.4 están hechas. La ficha de un MP3, FLAC o M4A/MP4 usa las etiquetas leídas y, si hay portada admitida, la guarda aparte. MKV y WebM quedan con el título provisional. Un MP4 con vídeo entra en la biblioteca elegida y no se reclasifica. La segunda ficha sigue en F3.5 y la lista de la biblioteca en F4.1. La escritura de etiquetas sigue en DP-11.
 4. Importar, consultar, editar y crear playlists (fases 3 a 6).
 5. Completar la reproducción y el vídeo asociado (fases 7 y 8) con la integración ya elegida.
 6. Añadir la reconciliación de archivos y las descargas por lotes (fases 9 y 10).

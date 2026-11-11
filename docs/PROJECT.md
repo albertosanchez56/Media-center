@@ -5,7 +5,7 @@ Estado del documento: planificación inicial, con el esquema de datos aprobado.
 
 Este documento describe qué es Media Center, a quién se dirige la primera versión y qué queda fuera de ella. Los requisitos detallados están en [REQUIREMENTS.md](REQUIREMENTS.md). Las decisiones cerradas y las que siguen abiertas están en [DECISIONS.md](DECISIONS.md).
 
-El esquema de SQLite descrito en [DATABASE.md](DATABASE.md) está aprobado (DC-18). La migración 1 crea la base al arrancar. El volumen se guarda en `app_settings`. F3.1 elige archivos o una carpeta y la biblioteca de destino. F3.2 copia o mueve esa selección a la carpeta administrada y crea la ficha principal. F3.3 rellena título, artista, álbum, género, año, descripción y duración cuando el archivo los trae en un formato que lofty 0.25.5 puede leer, y guarda la portada incrustada en la carpeta de imágenes. La lista de la biblioteca, la segunda ficha y el resto de las fases posteriores no han empezado.
+El esquema de SQLite descrito en [DATABASE.md](DATABASE.md) está aprobado (DC-18). La migración 1 crea la base al arrancar. El volumen se guarda en `app_settings`. F3.1 elige archivos o una carpeta y la biblioteca de destino. F3.2 copia o mueve esa selección a la carpeta administrada y crea la ficha principal. F3.3 rellena título, artista, álbum, género, año, descripción y duración cuando el archivo los trae en un formato que lofty 0.25.5 puede leer, y guarda la portada incrustada en la carpeta de imágenes. F3.4 comprueba que un MP4 entra en la biblioteca elegida, sea música, vídeos o películas. La lista de la biblioteca, la segunda ficha y el resto de las fases posteriores no han empezado.
 
 ## Qué es
 

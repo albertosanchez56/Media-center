@@ -30,8 +30,20 @@ pub fn write_flac(path: &Path) {
     save_tag(path, TagType::VorbisComments, Some(JPEG));
 }
 
+/// Contenedor M4A de solo audio: `ftyp` M4A y un `hdlr` `soun`, sin pista `vide`.
 pub fn write_mp4(path: &Path) {
     fs::write(path, mp4_with_cover(JPEG)).unwrap();
+}
+
+/// MP4 `mp42` con un fotograma JPEG en una pista de vídeo, muestras de audio
+/// y las mismas etiquetas que `write_mp4`. No es ese M4A con otro nombre.
+pub fn write_av_mp4(path: &Path) {
+    fs::write(path, audiovisual_mp4(true)).unwrap();
+}
+
+/// MP4 `mp42` con el mismo fotograma y las mismas etiquetas, sin pista de audio.
+pub fn write_video_only_mp4(path: &Path) {
+    fs::write(path, audiovisual_mp4(false)).unwrap();
 }
 
 pub fn write_mp3_with_webp_and_title(path: &Path) {
@@ -112,24 +124,10 @@ fn flac_stream() -> Vec<u8> {
 }
 
 fn mp4_with_cover(jpeg: &[u8]) -> Vec<u8> {
-    let mut ilst = Vec::new();
-    ilst.extend(text_atom(&[0xA9, b'n', b'a', b'm'], "Cancion"));
-    ilst.extend(text_atom(&[0xA9, b'A', b'R', b'T'], "Artista"));
-    ilst.extend(text_atom(&[0xA9, b'a', b'l', b'b'], "Disco"));
-    ilst.extend(text_atom(&[0xA9, b'g', b'e', b'n'], "Rock"));
-    ilst.extend(text_atom(&[0xA9, b'd', b'a', b'y'], "1999"));
-    ilst.extend(text_atom(&[0xA9, b'c', b'm', b't'], "Una nota"));
-    ilst.extend(atom(b"covr", &data_atom(13, jpeg)));
-    let meta_body = {
-        let mut body = vec![0, 0, 0, 0];
-        body.extend(atom(b"ilst", &ilst));
-        body
-    };
-    let udta = atom(b"udta", &atom(b"meta", &meta_body));
     let moov = atom(b"moov", &{
         let mut body = mvhd();
         body.extend(audio_trak());
-        body.extend(udta);
+        body.extend(tagged_udta(jpeg));
         body
     });
     let mut ftyp_body = b"M4A ".to_vec();
@@ -189,4 +187,198 @@ fn atom(kind: &[u8], body: &[u8]) -> Vec<u8> {
     out.extend_from_slice(kind);
     out.extend_from_slice(body);
     out
+}
+
+fn audiovisual_mp4(audio: bool) -> Vec<u8> {
+    let audio_sample: &[u8] = if audio { &[0, 0, 0, 0] } else { &[] };
+    let ftyp = ftyp_mp42();
+    let mut payload = JPEG.to_vec();
+    payload.extend_from_slice(audio_sample);
+    let video_offset = (ftyp.len() + 8) as u32;
+    let audio_offset = video_offset + JPEG.len() as u32;
+    let mut moov = mvhd();
+    moov.extend(video_trak(1, video_offset, JPEG.len() as u32));
+    if audio {
+        moov.extend(pcm_trak(2, audio_offset, audio_sample.len() as u32));
+    }
+    moov.extend(tagged_udta(JPEG));
+    let mut file = ftyp;
+    file.extend(atom(b"mdat", &payload));
+    file.extend(atom(b"moov", &moov));
+    file
+}
+
+fn ftyp_mp42() -> Vec<u8> {
+    let mut body = b"mp42".to_vec();
+    body.extend_from_slice(&0u32.to_be_bytes());
+    body.extend_from_slice(b"mp42isomiso2");
+    atom(b"ftyp", &body)
+}
+
+fn tagged_udta(jpeg: &[u8]) -> Vec<u8> {
+    let mut ilst = Vec::new();
+    ilst.extend(text_atom(&[0xA9, b'n', b'a', b'm'], "Cancion"));
+    ilst.extend(text_atom(&[0xA9, b'A', b'R', b'T'], "Artista"));
+    ilst.extend(text_atom(&[0xA9, b'a', b'l', b'b'], "Disco"));
+    ilst.extend(text_atom(&[0xA9, b'g', b'e', b'n'], "Rock"));
+    ilst.extend(text_atom(&[0xA9, b'd', b'a', b'y'], "1999"));
+    ilst.extend(text_atom(&[0xA9, b'c', b'm', b't'], "Una nota"));
+    ilst.extend(atom(b"covr", &data_atom(13, jpeg)));
+    let mut meta = vec![0, 0, 0, 0];
+    meta.extend(atom(b"ilst", &ilst));
+    atom(b"udta", &atom(b"meta", &meta))
+}
+
+fn video_trak(track_id: u32, sample_offset: u32, sample_len: u32) -> Vec<u8> {
+    let mut mdia = mdhd(1000, 1000);
+    mdia.extend(hdlr(b"vide", "VideoHandler"));
+    mdia.extend(atom(b"minf", &{
+        let mut body = vmhd();
+        body.extend(data_reference());
+        body.extend(sample_table(
+            b"jpeg",
+            visual_entry(),
+            sample_offset,
+            sample_len,
+        ));
+        body
+    }));
+    let mut trak = tkhd(track_id, 1000, 1, 1, 0);
+    trak.extend(atom(b"mdia", &mdia));
+    atom(b"trak", &trak)
+}
+
+fn pcm_trak(track_id: u32, sample_offset: u32, sample_len: u32) -> Vec<u8> {
+    let mut mdia = mdhd(1000, 1000);
+    mdia.extend(hdlr(b"soun", "SoundHandler"));
+    mdia.extend(atom(b"minf", &{
+        let mut body = smhd();
+        body.extend(data_reference());
+        body.extend(sample_table(
+            b"raw ",
+            audio_entry(),
+            sample_offset,
+            sample_len,
+        ));
+        body
+    }));
+    let mut trak = tkhd(track_id, 1000, 0, 0, 0x0100);
+    trak.extend(atom(b"mdia", &mdia));
+    atom(b"trak", &trak)
+}
+
+fn mdhd(timescale: u32, duration: u32) -> Vec<u8> {
+    let mut body = vec![0; 4];
+    body.extend_from_slice(&0u32.to_be_bytes());
+    body.extend_from_slice(&0u32.to_be_bytes());
+    body.extend_from_slice(&timescale.to_be_bytes());
+    body.extend_from_slice(&duration.to_be_bytes());
+    body.extend_from_slice(&0x55C4u16.to_be_bytes());
+    body.extend_from_slice(&0u16.to_be_bytes());
+    atom(b"mdhd", &body)
+}
+
+fn hdlr(kind: &[u8; 4], name: &str) -> Vec<u8> {
+    let mut body = vec![0; 8];
+    body.extend_from_slice(kind);
+    body.extend_from_slice(&[0; 12]);
+    body.extend_from_slice(name.as_bytes());
+    body.push(0);
+    atom(b"hdlr", &body)
+}
+
+fn tkhd(track_id: u32, duration: u32, width: u16, height: u16, volume: u16) -> Vec<u8> {
+    let mut body = Vec::new();
+    body.extend_from_slice(&0x0000_0007u32.to_be_bytes());
+    body.extend_from_slice(&0u32.to_be_bytes());
+    body.extend_from_slice(&0u32.to_be_bytes());
+    body.extend_from_slice(&track_id.to_be_bytes());
+    body.extend_from_slice(&0u32.to_be_bytes());
+    body.extend_from_slice(&duration.to_be_bytes());
+    body.extend_from_slice(&[0; 8]);
+    body.extend_from_slice(&0u16.to_be_bytes());
+    body.extend_from_slice(&0u16.to_be_bytes());
+    body.extend_from_slice(&volume.to_be_bytes());
+    body.extend_from_slice(&0u16.to_be_bytes());
+    for value in [0x0001_0000u32, 0, 0, 0, 0x0001_0000, 0, 0, 0, 0x4000_0000] {
+        body.extend_from_slice(&value.to_be_bytes());
+    }
+    body.extend_from_slice(&((u32::from(width)) << 16).to_be_bytes());
+    body.extend_from_slice(&((u32::from(height)) << 16).to_be_bytes());
+    atom(b"tkhd", &body)
+}
+
+fn vmhd() -> Vec<u8> {
+    let mut body = 1u32.to_be_bytes().to_vec();
+    body.extend_from_slice(&[0; 8]);
+    atom(b"vmhd", &body)
+}
+
+fn smhd() -> Vec<u8> {
+    atom(b"smhd", &[0; 8])
+}
+
+fn data_reference() -> Vec<u8> {
+    let url = atom(b"url ", &1u32.to_be_bytes());
+    let mut dref = vec![0, 0, 0, 0];
+    dref.extend_from_slice(&1u32.to_be_bytes());
+    dref.extend(url);
+    atom(b"dinf", &atom(b"dref", &dref))
+}
+
+fn sample_table(codec: &[u8], entry: Vec<u8>, offset: u32, len: u32) -> Vec<u8> {
+    let mut stsd_body = vec![0, 0, 0, 0];
+    stsd_body.extend_from_slice(&1u32.to_be_bytes());
+    stsd_body.extend(atom(codec, &entry));
+    let mut stts = vec![0, 0, 0, 0];
+    stts.extend_from_slice(&1u32.to_be_bytes());
+    stts.extend_from_slice(&1u32.to_be_bytes());
+    stts.extend_from_slice(&1000u32.to_be_bytes());
+    let mut stsc = vec![0, 0, 0, 0];
+    stsc.extend_from_slice(&1u32.to_be_bytes());
+    stsc.extend_from_slice(&1u32.to_be_bytes());
+    stsc.extend_from_slice(&1u32.to_be_bytes());
+    stsc.extend_from_slice(&1u32.to_be_bytes());
+    let mut stsz = vec![0, 0, 0, 0];
+    stsz.extend_from_slice(&len.to_be_bytes());
+    stsz.extend_from_slice(&1u32.to_be_bytes());
+    let mut stco = vec![0, 0, 0, 0];
+    stco.extend_from_slice(&1u32.to_be_bytes());
+    stco.extend_from_slice(&offset.to_be_bytes());
+    let mut stbl = atom(b"stsd", &stsd_body);
+    stbl.extend(atom(b"stts", &stts));
+    stbl.extend(atom(b"stsc", &stsc));
+    stbl.extend(atom(b"stsz", &stsz));
+    stbl.extend(atom(b"stco", &stco));
+    atom(b"stbl", &stbl)
+}
+
+fn visual_entry() -> Vec<u8> {
+    let mut body = vec![0; 6];
+    body.extend_from_slice(&1u16.to_be_bytes());
+    body.extend_from_slice(&[0; 16]);
+    body.extend_from_slice(&1u16.to_be_bytes());
+    body.extend_from_slice(&1u16.to_be_bytes());
+    body.extend_from_slice(&0x0048_0000u32.to_be_bytes());
+    body.extend_from_slice(&0x0048_0000u32.to_be_bytes());
+    body.extend_from_slice(&0u32.to_be_bytes());
+    body.extend_from_slice(&1u16.to_be_bytes());
+    body.extend_from_slice(&[0; 32]);
+    body.extend_from_slice(&0x0018u16.to_be_bytes());
+    body.extend_from_slice(&0xFFFFu16.to_be_bytes());
+    body
+}
+
+fn audio_entry() -> Vec<u8> {
+    let mut body = vec![0; 6];
+    body.extend_from_slice(&1u16.to_be_bytes());
+    body.extend_from_slice(&0u16.to_be_bytes());
+    body.extend_from_slice(&0u16.to_be_bytes());
+    body.extend_from_slice(&0u32.to_be_bytes());
+    body.extend_from_slice(&1u16.to_be_bytes());
+    body.extend_from_slice(&8u16.to_be_bytes());
+    body.extend_from_slice(&0u16.to_be_bytes());
+    body.extend_from_slice(&0u16.to_be_bytes());
+    body.extend_from_slice(&0x1F40_0000u32.to_be_bytes());
+    body
 }

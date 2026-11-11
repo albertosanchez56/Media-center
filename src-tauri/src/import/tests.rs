@@ -1069,3 +1069,205 @@ fn protected_fields_remain_when_the_card_is_written_again() {
     assert!(snapshot.contains("\"title\":\"Cancion\""));
     assert!(!snapshot.contains("Personal"));
 }
+
+fn handlers(bytes: &[u8]) -> Vec<[u8; 4]> {
+    let mut found = Vec::new();
+    let mut index = 0;
+    while index + 8 <= bytes.len() {
+        let size = u32::from_be_bytes(bytes[index..index + 4].try_into().unwrap()) as usize;
+        if size < 8 || index + size > bytes.len() {
+            break;
+        }
+        let kind = &bytes[index + 4..index + 8];
+        if kind == b"hdlr" && size >= 20 {
+            found.push(bytes[index + 16..index + 20].try_into().unwrap());
+        }
+        let nested = matches!(
+            kind,
+            b"moov" | b"trak" | b"mdia" | b"minf" | b"stbl" | b"dinf" | b"udta"
+        );
+        if nested {
+            found.extend(handlers(&bytes[index + 8..index + size]));
+        }
+        index += size;
+    }
+    found
+}
+
+fn stored_files(env: &Env) -> Vec<(String, String)> {
+    env.db
+        .with_connection(|connection| {
+            let mut statement =
+                connection.prepare("SELECT path, container FROM stored_files ORDER BY id")?;
+            let rows = statement.query_map([], |row| {
+                Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+            })?;
+            rows.collect()
+        })
+        .unwrap()
+}
+
+fn link_count(env: &Env) -> (i64, i64) {
+    env.db
+        .with_connection(|connection| {
+            connection.query_row(
+                "SELECT COUNT(*), COUNT(DISTINCT stored_file_id) FROM item_files",
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )
+        })
+        .unwrap()
+}
+
+fn preferences(env: &Env) -> Vec<Option<String>> {
+    env.db
+        .with_connection(|connection| {
+            let mut statement =
+                connection.prepare("SELECT visual_preference FROM media_items ORDER BY id")?;
+            let rows = statement.query_map([], |row| row.get(0))?;
+            rows.collect()
+        })
+        .unwrap()
+}
+
+#[test]
+fn write_mp4_is_audio_only_and_the_video_fixtures_are_not_renames() {
+    let env = Env::new();
+    let audio_path = env.scratch.child("audio.m4a");
+    let video_path = env.scratch.child("video.mp4");
+    let silent_path = env.scratch.child("mudo.mp4");
+    crate::tags::fixtures::write_mp4(&audio_path);
+    crate::tags::fixtures::write_av_mp4(&video_path);
+    crate::tags::fixtures::write_video_only_mp4(&silent_path);
+    let audio = fs::read(&audio_path).unwrap();
+    let video = fs::read(&video_path).unwrap();
+    let silent = fs::read(&silent_path).unwrap();
+    assert_eq!(&audio[4..12], b"ftypM4A ");
+    assert_eq!(handlers(&audio), vec![*b"soun"]);
+    assert_eq!(&video[4..12], b"ftypmp42");
+    assert_eq!(handlers(&video), vec![*b"vide", *b"soun"]);
+    assert!(
+        video
+            .windows(crate::tags::fixtures::JPEG.len())
+            .any(|window| window == crate::tags::fixtures::JPEG)
+    );
+    assert_ne!(video, audio);
+    assert_eq!(&silent[4..12], b"ftypmp42");
+    assert_eq!(handlers(&silent), vec![*b"vide"]);
+    assert_ne!(silent, video);
+}
+
+#[test]
+fn three_independent_video_mp4_sources_keep_the_chosen_library() {
+    let env = Env::new();
+    let jobs = [
+        ("music", "musica.mp4"),
+        ("video", "clip.mp4"),
+        ("movie", "pelicula.mp4"),
+    ];
+    let mut sources = Vec::new();
+    for (_, name) in jobs {
+        let path = env.scratch.child(name);
+        crate::tags::fixtures::write_av_mp4(&path);
+        sources.push(path);
+    }
+    let stamps: Vec<_> = sources
+        .iter()
+        .map(|path| fs::metadata(path).unwrap().modified().unwrap())
+        .collect();
+    for (index, (library, _)) in jobs.iter().enumerate() {
+        let cancel = AtomicBool::new(false);
+        let reports = run(
+            &env,
+            library,
+            Mode::Copy,
+            &[sources[index].clone()],
+            false,
+            &cancel,
+            &mut ImportHooks::default(),
+        );
+        assert_eq!(reports[0].state, "completed");
+        assert_eq!(
+            fs::metadata(&sources[index]).unwrap().modified().unwrap(),
+            stamps[index]
+        );
+        assert_eq!(
+            fs::read(&sources[index]).unwrap(),
+            fs::read(env.managed.join(sources[index].file_name().unwrap())).unwrap()
+        );
+    }
+    assert_eq!(
+        libraries(&env),
+        vec![
+            ("music".into(), "Cancion".into()),
+            ("video".into(), "Cancion".into()),
+            ("movie".into(), "Cancion".into()),
+        ]
+    );
+    assert_eq!(media_count(&env), 3);
+    assert_eq!(link_count(&env), (3, 3));
+    assert_eq!(
+        stored_files(&env),
+        vec![
+            ("musica.mp4".into(), "mp4".into()),
+            ("clip.mp4".into(), "mp4".into()),
+            ("pelicula.mp4".into(), "mp4".into()),
+        ]
+    );
+    assert_eq!(preferences(&env), vec![None, None, None]);
+    assert_eq!(image_rows(&env).len(), 3);
+    let snapshots: Vec<String> = env
+        .db
+        .with_connection(|connection| {
+            let mut statement =
+                connection.prepare("SELECT imported_snapshot FROM media_items ORDER BY id")?;
+            let rows = statement.query_map([], |row| row.get(0))?;
+            rows.collect()
+        })
+        .unwrap();
+    assert!(snapshots[0].contains("\"library\":\"music\""));
+    assert!(snapshots[0].contains("\"title\":\"Cancion\""));
+    assert!(snapshots[1].contains("\"library\":\"video\""));
+    assert!(snapshots[2].contains("\"library\":\"movie\""));
+}
+
+#[test]
+fn a_video_mp4_without_audio_keeps_a_provisional_card() {
+    let env = Env::new();
+    let source = env.scratch.child("mudo.mp4");
+    crate::tags::fixtures::write_video_only_mp4(&source);
+    let before = fs::metadata(&source).unwrap();
+    let read = crate::tags::read_card(&source, "music", "mudo");
+    assert!(!read.tags_read);
+    assert_eq!(read.title, "mudo");
+    let reports = run_simple(&env, Mode::Copy, &source);
+    assert_eq!(reports[0].state, "completed");
+    assert_eq!(
+        fs::metadata(&source).unwrap().modified().unwrap(),
+        before.modified().unwrap()
+    );
+    assert_eq!(
+        fs::read(&source).unwrap(),
+        fs::read(env.managed.join("mudo.mp4")).unwrap()
+    );
+    assert_eq!(libraries(&env), vec![("music".into(), "mudo".into())]);
+    assert_eq!(media_count(&env), 1);
+    assert_eq!(link_count(&env), (1, 1));
+    assert_eq!(stored_files(&env), vec![("mudo.mp4".into(), "mp4".into())]);
+    assert_eq!(preferences(&env), vec![None]);
+    assert!(image_rows(&env).is_empty());
+    let snapshot = card_text(&env).7;
+    assert!(snapshot.contains("\"library\":\"music\""));
+    assert!(snapshot.contains("\"title\":\"mudo\""));
+}
+
+#[test]
+#[ignore]
+fn write_f34_samples_for_manual() {
+    let dir = std::env::temp_dir().join("mc-f34-manual");
+    fs::create_dir_all(&dir).unwrap();
+    crate::tags::fixtures::write_av_mp4(&dir.join("musica.mp4"));
+    crate::tags::fixtures::write_av_mp4(&dir.join("clip.mp4"));
+    crate::tags::fixtures::write_av_mp4(&dir.join("pelicula.mp4"));
+    crate::tags::fixtures::write_video_only_mp4(&dir.join("mudo.mp4"));
+}
