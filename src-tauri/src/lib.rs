@@ -4,6 +4,7 @@ mod db;
 mod engine;
 mod import;
 mod storage;
+mod tags;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {

@@ -1,10 +1,8 @@
 //! Diario `file_operations` y alta de la ficha. Las transacciones son cortas:
 //! no permanecen abiertas durante la copia.
 
-use rusqlite::params;
-use serde_json::json;
-
 use crate::db::Database;
+use rusqlite::params;
 
 pub const RENAMED_WITHOUT_IDENTITY: &str = "El diario no conserva la identidad del archivo ni la del volumen. No se crea la ficha solo porque el tamaño coincida y no se borra ningún archivo.";
 
@@ -133,11 +131,34 @@ pub fn source_already_imported(db: &Database, source_path: &str) -> Result<bool,
     .map_err(show)
 }
 
+pub struct NewCard {
+    pub title: String,
+    pub artist: String,
+    pub album: String,
+    pub genre: String,
+    pub year: Option<i64>,
+    pub description: String,
+    pub duration_ms: Option<i64>,
+    pub snapshot: String,
+    pub cover_relative: Option<String>,
+}
+
+pub fn card_id(db: &Database, operation_id: i64) -> Result<Option<i64>, String> {
+    db.with_connection(|connection| {
+        connection.query_row(
+            "SELECT media_item_id FROM file_operations WHERE id = ?1",
+            params![operation_id],
+            |row| row.get(0),
+        )
+    })
+    .map_err(show)
+}
+
 pub fn commit_card(
     db: &Database,
     operation_id: i64,
     library: &str,
-    title: &str,
+    card: &NewCard,
     relative_path: &str,
     path_key: &str,
     size: i64,
@@ -145,15 +166,6 @@ pub fn commit_card(
     container: &str,
     file_id: Option<&str>,
 ) -> Result<(), String> {
-    let snapshot = json!({
-        "library": library,
-        "title": title,
-        "artist": "",
-        "album": "",
-        "genre": "",
-        "description": "",
-    })
-    .to_string();
     db.with_connection(|connection| {
         let tx = connection.transaction()?;
         let existing: Option<i64> = tx.query_row(
@@ -190,10 +202,21 @@ pub fn commit_card(
         let stored_id = tx.last_insert_rowid();
         tx.execute(
             "INSERT INTO media_items (
-                library, title, artist, album, genre, description, favorite,
+                library, title, artist, album, genre, year, description, duration_ms, favorite,
                 imported_snapshot, user_edited_fields, created_at, updated_at
-             ) VALUES (?1, ?2, '', '', '', '', 0, ?3, '{}', ?4, ?4)",
-            params![library, title, snapshot, now],
+             ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, 0, ?9, '{}', ?10, ?10)",
+            params![
+                library,
+                card.title,
+                card.artist,
+                card.album,
+                card.genre,
+                card.year,
+                card.description,
+                card.duration_ms,
+                card.snapshot,
+                now
+            ],
         )?;
         let item_id = tx.last_insert_rowid();
         tx.execute(
@@ -201,6 +224,9 @@ pub fn commit_card(
              VALUES (?1, ?2, 'primary', ?3)",
             params![item_id, stored_id, now],
         )?;
+        if let Some(relative) = card.cover_relative.as_deref() {
+            insert_embedded_tx(&tx, item_id, relative, &now)?;
+        }
         tx.execute(
             "UPDATE file_operations
              SET stage = 'db_committed', media_item_id = ?1, stored_file_id = ?2,
@@ -209,6 +235,80 @@ pub fn commit_card(
             params![item_id, stored_id, now, operation_id],
         )?;
         tx.commit()?;
+        Ok(())
+    })
+    .map_err(show)
+}
+
+#[cfg(test)]
+pub fn insert_embedded(db: &Database, item_id: i64, relative: &str) -> Result<bool, String> {
+    db.with_connection(|connection| {
+        let tx = connection.transaction()?;
+        let inserted = insert_embedded_tx(&tx, item_id, relative, &now_iso())?;
+        tx.commit()?;
+        Ok(inserted)
+    })
+    .map_err(show)
+}
+
+fn insert_embedded_tx(
+    tx: &rusqlite::Transaction<'_>,
+    item_id: i64,
+    relative: &str,
+    now: &str,
+) -> rusqlite::Result<bool> {
+    let embedded: i64 = tx.query_row(
+        "SELECT COUNT(*) FROM media_images WHERE media_item_id = ?1 AND source = 'embedded'",
+        params![item_id],
+        |row| row.get(0),
+    )?;
+    if embedded > 0 {
+        return Ok(false);
+    }
+    let used: i64 = tx.query_row(
+        "SELECT COUNT(*) FROM media_images WHERE relative_path = ?1",
+        params![relative],
+        |row| row.get(0),
+    )?;
+    if used > 0 {
+        return Ok(false);
+    }
+    let selected_rows: i64 = tx.query_row(
+        "SELECT COUNT(*) FROM media_images WHERE media_item_id = ?1 AND selected = 1",
+        params![item_id],
+        |row| row.get(0),
+    )?;
+    let selected = if selected_rows == 0 { 1 } else { 0 };
+    tx.execute(
+        "INSERT INTO media_images (
+            media_item_id, source, relative_path, selected, created_at, updated_at
+         ) VALUES (?1, 'embedded', ?2, ?3, ?4, ?4)",
+        params![item_id, relative, selected, now],
+    )?;
+    Ok(true)
+}
+
+#[cfg(test)]
+pub fn save_card_text(db: &Database, item_id: i64, card: &NewCard) -> Result<(), String> {
+    db.with_connection(|connection| {
+        connection.execute(
+            "UPDATE media_items
+             SET title = ?1, artist = ?2, album = ?3, genre = ?4, year = ?5,
+                 description = ?6, duration_ms = ?7, imported_snapshot = ?8, updated_at = ?9
+             WHERE id = ?10",
+            params![
+                card.title,
+                card.artist,
+                card.album,
+                card.genre,
+                card.year,
+                card.description,
+                card.duration_ms,
+                card.snapshot,
+                now_iso(),
+                item_id
+            ],
+        )?;
         Ok(())
     })
     .map_err(show)

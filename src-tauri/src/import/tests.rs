@@ -391,7 +391,7 @@ fn an_interrupted_copy_keeps_the_original_and_removes_the_temp() {
     assert!(partials(&env.managed).is_empty());
     assert_eq!(media_count(&env), 0);
     assert_eq!(stages(&env)[0].1, "failed");
-    recover(&env.db, &env.managed).unwrap();
+    recover(&env.db, &env.managed, &env.app_data.join("images")).unwrap();
     assert_eq!(fs::read(&source).unwrap(), b"0123456789abcdef");
     assert_eq!(media_count(&env), 0);
     assert_eq!(stages(&env)[0].1, "failed");
@@ -423,11 +423,11 @@ fn sqlite_failure_after_publish_keeps_both_files_until_recovery() {
     );
     assert_eq!(media_count(&env), 0);
     assert_eq!(stages(&env)[0].1, "ready_for_db");
-    recover(&env.db, &env.managed).unwrap();
+    recover(&env.db, &env.managed, &env.app_data.join("images")).unwrap();
     assert_eq!(media_count(&env), 1);
     assert_eq!(fs::read(&source).unwrap(), b"contenido");
     assert_eq!(stages(&env)[0].1, "completed");
-    recover(&env.db, &env.managed).unwrap();
+    recover(&env.db, &env.managed, &env.app_data.join("images")).unwrap();
     assert_eq!(media_count(&env), 1);
 }
 
@@ -452,10 +452,10 @@ fn a_move_whose_destination_changes_before_recovery_keeps_the_original() {
     .into_iter()
     .for_each(|item| assert_eq!(item.state, "ready_for_db"));
     fs::write(env.managed.join("tema.bin"), b"corrupto!").unwrap();
-    recover(&env.db, &env.managed).unwrap();
+    recover(&env.db, &env.managed, &env.app_data.join("images")).unwrap();
     assert_eq!(fs::read(&source).unwrap(), b"contenido");
     assert_eq!(stages(&env)[0].1, "needs_review");
-    recover(&env.db, &env.managed).unwrap();
+    recover(&env.db, &env.managed, &env.app_data.join("images")).unwrap();
     assert_eq!(fs::read(&source).unwrap(), b"contenido");
     assert_eq!(stages(&env)[0].1, "needs_review");
 }
@@ -480,7 +480,7 @@ fn rename_recovery_does_not_trust_size_and_deletes_nothing() {
     )
     .unwrap();
     super::journal::set_stage(&env.db, id, "ready_for_db", None).unwrap();
-    recover(&env.db, &env.managed).unwrap();
+    recover(&env.db, &env.managed, &env.app_data.join("images")).unwrap();
     assert_eq!(
         fs::read(env.managed.join(destination_name)).unwrap(),
         b"tamano-ok"
@@ -489,7 +489,7 @@ fn rename_recovery_does_not_trust_size_and_deletes_nothing() {
     assert_eq!(media_count(&env), 0);
     assert_eq!(stages(&env)[0].1, "needs_review");
     assert!(stages(&env)[0].2 == "rename");
-    recover(&env.db, &env.managed).unwrap();
+    recover(&env.db, &env.managed, &env.app_data.join("images")).unwrap();
     assert_eq!(media_count(&env), 0);
     assert_eq!(
         fs::read(env.managed.join(destination_name)).unwrap(),
@@ -752,4 +752,320 @@ fn confirming_the_managed_folder_uses_only_the_given_storage_file() {
     let loaded = storage::load_storage(&storage_file).unwrap();
     assert_eq!(loaded.confirmation, Confirmation::Confirmed);
     let _ = SystemTime::now().duration_since(UNIX_EPOCH);
+}
+
+fn images_of(env: &Env) -> std::path::PathBuf {
+    env.app_data.join("images")
+}
+
+fn image_rows(env: &Env) -> Vec<(String, i64, String)> {
+    env.db
+        .with_connection(|connection| {
+            let mut statement = connection
+                .prepare("SELECT source, selected, relative_path FROM media_images ORDER BY id")?;
+            let rows = statement.query_map([], |row| {
+                Ok((
+                    row.get::<_, String>(0)?,
+                    row.get::<_, i64>(1)?,
+                    row.get::<_, String>(2)?,
+                ))
+            })?;
+            rows.collect()
+        })
+        .unwrap()
+}
+
+fn card_text(
+    env: &Env,
+) -> (
+    String,
+    String,
+    String,
+    String,
+    Option<i64>,
+    String,
+    Option<i64>,
+    String,
+) {
+    env.db
+        .with_connection(|connection| {
+            connection.query_row(
+                "SELECT title, artist, album, genre, year, description, duration_ms, imported_snapshot
+                 FROM media_items ORDER BY id LIMIT 1",
+                [],
+                |row| {
+                    Ok((
+                        row.get(0)?,
+                        row.get(1)?,
+                        row.get(2)?,
+                        row.get(3)?,
+                        row.get(4)?,
+                        row.get(5)?,
+                        row.get(6)?,
+                        row.get(7)?,
+                    ))
+                },
+            )
+        })
+        .unwrap()
+}
+
+#[test]
+fn an_mp3_keeps_the_original_and_stores_the_real_cover() {
+    let env = Env::new();
+    let source = env.scratch.child("cancion.mp3");
+    crate::tags::fixtures::write_mp3(&source);
+    let before = fs::metadata(&source).unwrap();
+    let reports = run_simple(&env, Mode::Copy, &source);
+    assert_eq!(reports[0].state, "completed");
+    assert_eq!(
+        fs::read(&source).unwrap(),
+        fs::read(env.managed.join("cancion.mp3")).unwrap()
+    );
+    assert_eq!(
+        fs::metadata(&source).unwrap().modified().unwrap(),
+        before.modified().unwrap()
+    );
+    let (title, artist, album, genre, year, description, duration, snapshot) = card_text(&env);
+    assert_eq!(title, "Cancion");
+    assert_eq!(artist, "Artista");
+    assert_eq!(album, "Disco");
+    assert_eq!(genre, "Rock");
+    assert_eq!(year, Some(1999));
+    assert_eq!(description, "Una nota");
+    assert!(duration.is_some());
+    assert!(snapshot.contains("\"title\":\"Cancion\""));
+    assert_eq!(
+        image_rows(&env),
+        vec![("embedded".into(), 1, "embedded/1.jpg".into())]
+    );
+    assert_eq!(
+        fs::read(images_of(&env).join("embedded").join("1.jpg")).unwrap(),
+        crate::tags::fixtures::JPEG
+    );
+    recover(&env.db, &env.managed, &images_of(&env)).unwrap();
+    assert_eq!(media_count(&env), 1);
+    assert_eq!(image_rows(&env).len(), 1);
+}
+
+#[test]
+fn flac_and_m4a_fill_the_chosen_library() {
+    let env = Env::new();
+    let flac = env.scratch.child("tema.flac");
+    crate::tags::fixtures::write_flac(&flac);
+    let before = fs::read(&flac).unwrap();
+    assert_eq!(run_simple(&env, Mode::Copy, &flac)[0].state, "completed");
+    assert_eq!(fs::read(&flac).unwrap(), before);
+    assert_eq!(card_text(&env).0, "Cancion");
+    assert_eq!(image_rows(&env).len(), 1);
+
+    let m4a = env.scratch.child("video.m4a");
+    crate::tags::fixtures::write_mp4(&m4a);
+    let cancel = AtomicBool::new(false);
+    let reports = run(
+        &env,
+        "movie",
+        Mode::Copy,
+        &[m4a.clone()],
+        false,
+        &cancel,
+        &mut ImportHooks::default(),
+    );
+    assert_eq!(reports[0].state, "completed");
+    assert_eq!(
+        fs::read(&m4a).unwrap(),
+        fs::read(env.managed.join("video.m4a")).unwrap()
+    );
+    assert_eq!(libraries(&env)[1], ("movie".into(), "Cancion".into()));
+    assert_eq!(image_rows(&env).len(), 2);
+}
+
+#[test]
+fn mkv_and_webm_still_import_without_tags() {
+    let env = Env::new();
+    let mkv = env.source("peli.mkv", b"\x1a\x45\xdf\xa3no-es-matroska");
+    let webm = env.source("clip.webm", b"\x1a\x45\xdf\xa3tampoco");
+    let cancel = AtomicBool::new(false);
+    let reports = run(
+        &env,
+        "video",
+        Mode::Copy,
+        &[mkv.clone(), webm.clone()],
+        false,
+        &cancel,
+        &mut ImportHooks::default(),
+    );
+    assert!(reports.iter().all(|report| report.state == "completed"));
+    assert_eq!(
+        libraries(&env),
+        vec![
+            ("video".into(), "peli".into()),
+            ("video".into(), "clip".into()),
+        ]
+    );
+    assert!(image_rows(&env).is_empty());
+    assert_eq!(fs::read(&mkv).unwrap(), b"\x1a\x45\xdf\xa3no-es-matroska");
+    assert_eq!(fs::read(&webm).unwrap(), b"\x1a\x45\xdf\xa3tampoco");
+}
+
+#[test]
+fn a_webp_cover_is_not_saved_and_an_oversized_one_is_dropped() {
+    let env = Env::new();
+    let webp = env.scratch.child("webp.mp3");
+    crate::tags::fixtures::write_mp3_with_webp_and_title(&webp);
+    assert_eq!(run_simple(&env, Mode::Copy, &webp)[0].state, "completed");
+    assert_eq!(card_text(&env).0, "Con webp");
+    assert!(image_rows(&env).is_empty());
+
+    let huge = env.scratch.child("grande.mp3");
+    crate::tags::fixtures::write_mp3_with_oversized_cover(&huge);
+    assert_eq!(run_simple(&env, Mode::Copy, &huge)[0].state, "completed");
+    let texts = env
+        .db
+        .with_connection(|connection| {
+            let mut statement =
+                connection.prepare("SELECT title, artist FROM media_items ORDER BY id")?;
+            let rows = statement.query_map([], |row| {
+                Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+            })?;
+            rows.collect::<Result<Vec<_>, _>>()
+        })
+        .unwrap();
+    assert_eq!(texts[1], ("Grande".into(), "Artista".into()));
+    assert!(image_rows(&env).is_empty());
+}
+
+#[test]
+fn a_large_audio_file_does_not_become_the_cover() {
+    let env = Env::new();
+    let source = env.scratch.child("largo.mp3");
+    crate::tags::fixtures::write_mp3(&source);
+    let mut file = fs::OpenOptions::new().append(true).open(&source).unwrap();
+    use std::io::Write;
+    file.write_all(&vec![0u8; 2 * 1024 * 1024]).unwrap();
+    drop(file);
+    let length = fs::metadata(&source).unwrap().len();
+    assert!(length > 2 * 1024 * 1024);
+    assert_eq!(run_simple(&env, Mode::Copy, &source)[0].state, "completed");
+    let cover = fs::read(images_of(&env).join("embedded").join("1.jpg")).unwrap();
+    assert_eq!(cover, crate::tags::fixtures::JPEG);
+    assert!(cover.len() < 1024);
+    assert_eq!(fs::metadata(&source).unwrap().len(), length);
+}
+
+#[test]
+fn recovery_does_not_duplicate_the_card_or_the_cover() {
+    let env = Env::new();
+    let source = env.scratch.child("cancion.mp3");
+    crate::tags::fixtures::write_mp3(&source);
+    assert_eq!(run_simple(&env, Mode::Copy, &source)[0].state, "completed");
+    env.db
+        .with_connection(|connection| {
+            connection.execute(
+                "UPDATE file_operations SET stage = 'ready_for_db' WHERE id = 1",
+                [],
+            )?;
+            Ok::<(), rusqlite::Error>(())
+        })
+        .unwrap();
+    recover(&env.db, &env.managed, &images_of(&env)).unwrap();
+    assert_eq!(media_count(&env), 1);
+    assert_eq!(image_rows(&env).len(), 1);
+    assert_eq!(stages(&env)[0].1, "completed");
+}
+
+#[test]
+fn a_user_image_is_not_replaced_and_stays_selected() {
+    let env = Env::new();
+    let source = env.source("clip.bin", b"sin-etiquetas");
+    assert_eq!(run_simple(&env, Mode::Copy, &source)[0].state, "completed");
+    let user = images_of(&env).join("user");
+    fs::create_dir_all(&user).unwrap();
+    fs::write(user.join("1.png"), b"portada-personal").unwrap();
+    env.db
+        .with_connection(|connection| {
+            connection.execute(
+                "INSERT INTO media_images (
+                    media_item_id, source, relative_path, selected, created_at, updated_at
+                 ) VALUES (1, 'user', 'user/1.png', 1, '2026-11-11T00:00:00.000Z', '2026-11-11T00:00:00.000Z')",
+                [],
+            )?;
+            Ok::<(), rusqlite::Error>(())
+        })
+        .unwrap();
+    let jpeg = crate::tags::fixtures::JPEG;
+    let stored = super::covers::store(&env.db, &images_of(&env), 1, jpeg, "jpg")
+        .unwrap()
+        .unwrap();
+    assert!(super::journal::insert_embedded(&env.db, 1, &stored.relative).unwrap());
+    assert!(!super::journal::insert_embedded(&env.db, 1, &stored.relative).unwrap());
+    assert_eq!(fs::read(user.join("1.png")).unwrap(), b"portada-personal");
+    let rows = image_rows(&env);
+    assert_eq!(
+        rows.iter()
+            .filter(|row| row.0 == "user" && row.1 == 1)
+            .count(),
+        1
+    );
+    assert_eq!(
+        rows.iter()
+            .filter(|row| row.0 == "embedded" && row.1 == 0)
+            .count(),
+        1
+    );
+}
+
+#[test]
+fn protected_fields_remain_when_the_card_is_written_again() {
+    let env = Env::new();
+    let source = env.scratch.child("cancion.mp3");
+    crate::tags::fixtures::write_mp3(&source);
+    assert_eq!(run_simple(&env, Mode::Copy, &source)[0].state, "completed");
+    env.db
+        .with_connection(|connection| {
+            connection.execute(
+                "UPDATE media_items
+                 SET title = 'Personal', user_edited_fields = '[\"title\"]'
+                 WHERE id = 1",
+                [],
+            )?;
+            Ok::<(), rusqlite::Error>(())
+        })
+        .unwrap();
+    let current = crate::tags::CardDraft {
+        title: "Personal".into(),
+        artist: card_text(&env).1,
+        album: String::new(),
+        genre: String::new(),
+        year: None,
+        description: String::new(),
+        duration_ms: card_text(&env).6,
+        snapshot: String::new(),
+        cover: None,
+        tags_read: true,
+    };
+    let mut incoming = crate::tags::read_card(&env.managed.join("cancion.mp3"), "music", "cancion");
+    incoming.artist = "Otro".into();
+    let merged = crate::tags::apply_protected(&current, "[\"title\"]", &incoming);
+    super::journal::save_card_text(
+        &env.db,
+        1,
+        &super::journal::NewCard {
+            title: merged.title,
+            artist: merged.artist,
+            album: merged.album,
+            genre: merged.genre,
+            year: merged.year,
+            description: merged.description,
+            duration_ms: merged.duration_ms,
+            snapshot: merged.snapshot,
+            cover_relative: None,
+        },
+    )
+    .unwrap();
+    let (title, artist, _, _, _, _, _, snapshot) = card_text(&env);
+    assert_eq!(title, "Personal");
+    assert_eq!(artist, "Otro");
+    assert!(snapshot.contains("\"title\":\"Cancion\""));
+    assert!(!snapshot.contains("Personal"));
 }

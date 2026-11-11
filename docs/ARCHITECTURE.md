@@ -1,9 +1,9 @@
 # Media Center — Arquitectura
 
 Estado del documento: propuesta de estructura, con la segunda revisión aplicada. La sección «Interfaz Angular implementada» describe el código que existe tras F1.3, «Motor experimental de F1.4 y F1.5» el estudio de libmpv, y «Organización del motor del producto» lo que se construirá en F7.1.  
-Última actualización: 2026-11-09.
+Última actualización: 2026-11-11.
 
-Este documento reparte responsabilidades entre la interfaz, la lógica y los datos. El procedimiento de copia y movimiento y la extracción de portadas están confirmados en [DECISIONS.md](DECISIONS.md). La integración de libmpv está elegida (DC-17). El esquema inicial de SQLite está aprobado (DC-18) en [DATABASE.md](DATABASE.md) y la migración 1 lo crea al arrancar. Las rutas están decididas (DC-22). La herramienta de etiquetas sigue abierta. Angular no ejecuta SQL.
+Este documento reparte responsabilidades entre la interfaz, la lógica y los datos. El procedimiento de copia y movimiento y la extracción de portadas están confirmados en [DECISIONS.md](DECISIONS.md). La integración de libmpv está elegida (DC-17). El esquema inicial de SQLite está aprobado (DC-18) en [DATABASE.md](DATABASE.md) y la migración 1 lo crea al arrancar. Las rutas están decididas (DC-22). La lectura de etiquetas usa lofty 0.25.5 y no escribe el archivo (DP-10). La escritura opcional sigue abierta en DP-11. Angular no ejecuta SQL.
 
 ## Vista general
 
@@ -303,14 +303,14 @@ Quitar una ficha borra sus vínculos, sus apariciones en playlists y sus filas d
 2. Rust comprueba el espacio disponible cuando la operación necesita una copia, y elige un nombre libre en la carpeta administrada. Un nombre ocupado no se sobrescribe: se reserva otro nombre y queda anotado en el diario.
 3. Rust graba la operación en SQLite antes de modificar el fichero de origen.
 4. Ejecuta el procedimiento de copia o movimiento de la sección siguiente.
-5. Con el archivo ya verificado en el destino, Rust crea en una transacción la ficha, el archivo físico y el vínculo.
-6. El adaptador de etiquetas lee los metadatos y, si existe, la portada incrustada.
-7. La aplicación guarda una copia de esa portada en la carpeta de imágenes, ligada a la ficha, con origen `embedded`.
-8. La interfaz muestra la ficha para corregirla.
+5. Con el archivo ya verificado en el destino, el adaptador de etiquetas lo abre en solo lectura. Si la lectura vale, prepara título, artista, álbum, género, año, descripción y duración. Si falla, o si el tamaño o la fecha cambian durante la lectura, la ficha usa el título provisional del nombre de archivo.
+6. Si hay una portada cuya firma es JPEG, PNG, GIF, BMP o TIFF y no pasa de 8 MiB, la aplicación escribe antes una copia nueva en la carpeta de imágenes. No sustituye un archivo ya existente. WebP no se guarda: lofty 0.25.5 no lo reconoce en su lectura. MKV y WebM no se leen y siguen el alta provisional.
+7. En una transacción corta, Rust crea la ficha, el archivo físico, el vínculo y, si hubo portada, la fila de imagen con origen `embedded`. Si esa transacción falla, solo se borra la imagen nueva de ese intento que haya quedado sin referencia.
+8. La interfaz mostrará la ficha para corregirla. Esa pantalla no está hecha: la lista sigue en F4.1 y la edición en la fase 5.
 
-Si el alta de la ficha falla después de haber dejado el archivo en el destino, el original de un movimiento no se elimina. La operación queda para la recuperación.
+Si el alta de la ficha falla después de haber dejado el archivo en el destino, el original de un movimiento no se elimina. La operación queda para la recuperación. Un fallo de etiquetas no añade borrados ni cambia ese criterio.
 
-La extracción de la portada está confirmada. El archivo multimedia no cambia de contenido ni se reescribe. La herramienta que lee la imagen sigue pendiente.
+La extracción de la portada está confirmada. El archivo multimedia no cambia de contenido ni se reescribe. La lectura usa lofty 0.25.5. La escritura de etiquetas sigue en DP-11.
 
 ### Copiar
 
@@ -445,7 +445,7 @@ Cada integración externa se esconde detrás de un adaptador. El resto de la apl
 | --- | --- | --- |
 | Motor multimedia | Abrir medios, controlar una sola reproducción, informar de posición, pistas y subtítulos, y separar audio de vídeo cuando haga falta | Ninguna en la integración: libmpv dentro del proceso (DC-17). Sigue abierto el empaquetado de la DLL (DP-20) |
 | Descarga | Vista previa, descarga por lotes, progreso, cancelación y miniaturas de enlaces compatibles de YouTube | Versiones mínimas de yt-dlp y FFmpeg, la lista de formatos y si se empaquetan con el instalador |
-| Etiquetas | Leer metadatos y extraer la portada incrustada sin modificar el archivo | Herramienta concreta. La escritura opcional queda prevista y desactivada por defecto |
+| Etiquetas | Leer metadatos y extraer la portada incrustada sin modificar el archivo | Lectura cerrada: lofty 0.25.5, compilado en el binario. La escritura opcional queda prevista, desactivada y abierta en DP-11 |
 
 ## Datos en disco
 

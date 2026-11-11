@@ -8,6 +8,7 @@
 //! con el manejador que se ha comprobado. Una fila `method = rename` queda en
 //! `needs_review` y no borra nada.
 
+mod covers;
 mod journal;
 mod win;
 
@@ -22,6 +23,7 @@ use serde::Serialize;
 
 use crate::db::Database;
 use crate::storage::{self, Confirmation, ManagedFolderState};
+use crate::tags::{self, CardDraft};
 
 pub use commands::ImportRuntime;
 
@@ -142,7 +144,7 @@ pub fn import_paths(
     reports
 }
 
-pub fn recover(db: &Database, managed: &Path) -> Result<(), String> {
+pub fn recover(db: &Database, managed: &Path, images: &Path) -> Result<(), String> {
     for operation in journal::pending(db)? {
         if operation.method == "rename" {
             journal::set_stage(
@@ -162,7 +164,7 @@ pub fn recover(db: &Database, managed: &Path) -> Result<(), String> {
             )?;
             continue;
         }
-        recover_copy(db, managed, &operation)?;
+        recover_copy(db, managed, images, &operation)?;
     }
     Ok(())
 }
@@ -182,7 +184,10 @@ pub fn recover_on_startup(db: &Database, app_local_data: &Path) -> Result<(), St
         return Ok(());
     }
     match storage::resolve_state(&config) {
-        ManagedFolderState::Confirmed(path) => recover(db, &path),
+        ManagedFolderState::Confirmed(path) => {
+            let images = storage::InternalPaths::from_app_local_data(app_local_data).images;
+            recover(db, &path, &images)
+        }
         _ => Ok(()),
     }
 }
@@ -381,7 +386,6 @@ fn import_file(
         );
     }
 
-    let title = title_of(&destination_name);
     let container = container_of(&destination_name);
     let destination_facts = match win::destination_facts(&destination) {
         Ok(facts) if facts.size == opened.facts.size => facts,
@@ -400,11 +404,14 @@ fn import_file(
         Err(error) => return report_of(&source_text, "needs_review", &error),
     };
     let file_id = win::file_id_of(&destination_facts);
-    if let Err(error) = journal::commit_card(
+    let images = app_data.join("images");
+    if let Err(error) = commit_published(
         db,
+        &images,
         id,
         library,
-        &title,
+        &destination_name,
+        &destination,
         &destination_name,
         &destination_key,
         destination_facts.size as i64,
@@ -521,6 +528,7 @@ fn verify_and_delete(
 fn recover_copy(
     db: &Database,
     managed: &Path,
+    images: &Path,
     operation: &journal::Operation,
 ) -> Result<(), String> {
     let destination = match resolve_file_name(managed, &operation.destination_relative_path) {
@@ -561,7 +569,7 @@ fn recover_copy(
         );
     }
     if dest_ok {
-        return commit_once(db, operation, &destination);
+        return commit_once(db, images, operation, &destination);
     }
     if destination.exists()
         || temp
@@ -601,7 +609,7 @@ fn recover_copy(
         {
             return journal::set_stage(db, operation.id, "needs_review", Some(&error));
         }
-        return commit_once(db, operation, &destination);
+        return commit_once(db, images, operation, &destination);
     }
     journal::set_stage(
         db,
@@ -613,6 +621,7 @@ fn recover_copy(
 
 fn commit_once(
     db: &Database,
+    images: &Path,
     operation: &journal::Operation,
     destination: &Path,
 ) -> Result<(), String> {
@@ -633,11 +642,13 @@ fn commit_once(
         Err(error) => return journal::set_stage(db, operation.id, "needs_review", Some(&error)),
     };
     let file_id = win::file_id_of(&facts);
-    let result = journal::commit_card(
+    let result = commit_published(
         db,
+        images,
         operation.id,
         &operation.library,
-        &title_of(&operation.destination_relative_path),
+        &operation.destination_relative_path,
+        destination,
         &operation.destination_relative_path,
         &key,
         operation.source_size_bytes,
@@ -967,6 +978,85 @@ fn discard_temp(managed: &Path, relative: &str) -> Result<(), String> {
             .map_err(|error| format!("No se ha podido retirar el temporal: {error}"))?;
     }
     Ok(())
+}
+
+fn commit_published(
+    db: &Database,
+    images: &Path,
+    operation_id: i64,
+    library: &str,
+    destination_name: &str,
+    destination: &Path,
+    relative_path: &str,
+    path_key: &str,
+    size: i64,
+    modified: &str,
+    container: &str,
+    file_id: Option<&str>,
+) -> Result<(), String> {
+    if journal::card_id(db, operation_id)?.is_some() {
+        return journal::commit_card(
+            db,
+            operation_id,
+            library,
+            &journal::NewCard {
+                title: String::new(),
+                artist: String::new(),
+                album: String::new(),
+                genre: String::new(),
+                year: None,
+                description: String::new(),
+                duration_ms: None,
+                snapshot: "{}".into(),
+                cover_relative: None,
+            },
+            relative_path,
+            path_key,
+            size,
+            modified,
+            container,
+            file_id,
+        );
+    }
+    let incoming = tags::read_card(destination, library, &title_of(destination_name));
+    let draft = tags::apply_protected(&CardDraft::default(), "{}", &incoming);
+    let stored = match draft.cover.as_ref() {
+        Some(cover) => covers::store(db, images, operation_id, &cover.bytes, cover.extension)?,
+        None => None,
+    };
+    let card = new_card(&draft, stored.as_ref().map(|item| item.relative.clone()));
+    let result = journal::commit_card(
+        db,
+        operation_id,
+        library,
+        &card,
+        relative_path,
+        path_key,
+        size,
+        modified,
+        container,
+        file_id,
+    );
+    if result.is_err()
+        && let Some(stored) = stored.as_ref().filter(|item| item.created)
+    {
+        let _ = covers::delete_if_unreferenced(db, images, &stored.relative);
+    }
+    result
+}
+
+fn new_card(draft: &CardDraft, cover_relative: Option<String>) -> journal::NewCard {
+    journal::NewCard {
+        title: draft.title.clone(),
+        artist: draft.artist.clone(),
+        album: draft.album.clone(),
+        genre: draft.genre.clone(),
+        year: draft.year,
+        description: draft.description.clone(),
+        duration_ms: draft.duration_ms,
+        snapshot: draft.snapshot.clone(),
+        cover_relative,
+    }
 }
 
 fn title_of(file_name: &str) -> String {

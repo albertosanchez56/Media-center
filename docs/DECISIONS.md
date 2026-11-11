@@ -1,7 +1,7 @@
 # Media Center — Decisiones
 
 Estado del documento: registro vivo. El esquema inicial quedó aprobado el 2026-11-09.  
-Última actualización: 2026-11-09.
+Última actualización: 2026-11-11.
 
 Una decisión confirmada se respeta al implementar. Una decisión pendiente no se da por cerrada dentro del código ni de otros documentos. Si dos documentos discrepan, se anota aquí antes de implementar.
 
@@ -97,7 +97,7 @@ Estados: confirmada, pendiente, prevista, descartada.
 - **Fecha:** 2026-11-04
 - **Estado:** confirmada
 - **Decisión:** Si el archivo trae una portada incrustada, la aplicación guarda una copia en la carpeta de imágenes de Media Center y la referencia desde la ficha. El archivo multimedia no se modifica. Una imagen personalizada se guarda como otro archivo de esa ficha y no sustituye ni elimina la copia extraída.
-- **Consecuencias:** Al importar hay una imagen de origen `embedded` y, si la persona cambia la portada, otra de origen `user`. La seleccionada puede cambiar. La herramienta que realiza la lectura sigue pendiente en DP-10. Esta decisión sustituye la antigua propuesta CP-01.
+- **Consecuencias:** Al importar hay una imagen de origen `embedded` y, si la persona cambia la portada, otra de origen `user`. La seleccionada puede cambiar. La lectura quedó cerrada en DP-10 el 2026-11-11 con lofty 0.25.5. Esta decisión sustituye la antigua propuesta CP-01.
 
 ### DC-13 La ficha es dueña de sus datos y no del archivo compartido
 
@@ -150,7 +150,7 @@ Estados: confirmada, pendiente, prevista, descartada.
 - **Fecha:** 2026-11-09
 - **Estado:** confirmada. Cierra DP-17 en la tarea F0.2
 - **Decisión:** El esquema de [DATABASE.md](DATABASE.md) es el esquema inicial aprobado. Separa archivo físico, ficha y vínculo. Admite referencias externas desde la primera migración. Las playlists permiten elementos repetidos y su biblioteca es anulable para listas mixtas futuras. La primera versión solo crea playlists de una biblioteca. Cada elemento de descarga guarda su estado. El lote guarda `cancel_requested`. El porcentaje de progreso no se persiste. `content_hash` puede calcularse bajo demanda o en segundo plano y no es obligatorio al importar. Antes de eliminar el original de un movimiento, el contenido del destino tiene que coincidir con el del origen; el tamaño y la fecha no bastan, y ante cualquier incertidumbre el original se conserva. Si el borrado físico de una imagen gestionada falla después de confirmar SQLite, la ficha no se deshace y no se eliminan otros archivos.
-- **Consecuencias:** F0.2 queda hecha. No se crea la base ni la migración en esta tarea. Las rutas quedaron después en DC-22. F2.2 crea la base con esa migración. F2.3 guarda el volumen en `app_settings`. Categorías y colecciones siguen fuera de la primera migración (DC-16). No cierran DP-02, DP-03, DP-05, DP-06, DP-07, DP-10, DP-11, DP-12, DP-13, DP-14, DP-15, DP-16, DP-19 ni DP-20.
+- **Consecuencias:** F0.2 queda hecha. No se crea la base ni la migración en esta tarea. Las rutas quedaron después en DC-22. F2.2 crea la base con esa migración. F2.3 guarda el volumen en `app_settings`. Categorías y colecciones siguen fuera de la primera migración (DC-16). No cierran DP-02, DP-03, DP-05, DP-06, DP-07, DP-11, DP-12, DP-13, DP-14, DP-15, DP-16, DP-19 ni DP-20. DP-10 se cerró después, el 2026-11-11, solo para la lectura.
 
 ### DC-19 La importación puede recordar una ruta externa
 
@@ -306,11 +306,11 @@ Estados: confirmada, pendiente, prevista, descartada.
 ### DP-10 Herramienta de etiquetas
 
 - **Fecha:** 2026-11-04
-- **Estado:** pendiente
-- **Bloquea:** F3.3 y condiciona F11.1
+- **Estado:** cerrada el 2026-11-11 en F3.3 para la lectura. La escritura sigue en DP-11. La entrada se conserva aquí con su historial
+- **Bloqueaba:** F3.3 y condicionaba F11.1. F3.3 ya no está bloqueada. F11.1 sigue condicionada por DP-11
 - **Qué hay que elegir:** Qué herramienta lee etiquetas y extrae portadas incrustadas sin modificar el archivo, y si esa misma herramienta sirve para la escritura opcional.
 - **La elección tiene que cubrir:** lectura de los formatos musicales previstos, extracción de la imagen incrustada según DC-12 y un fallo controlado cuando el archivo no tenga etiquetas.
-- **Consecuencias de dejarla abierta:** La importación puede copiar y registrar el archivo. El relleno automático de la ficha y la extracción esperan a esta decisión. El comportamiento de extracción ya está confirmado.
+- **Resolución:** la lectura usa lofty 0.25.5, fijado en esa versión, compilado dentro del binario de Rust. Licencia MIT OR Apache-2.0. El código de producto solo abre el archivo. MP3, FLAC y M4A/MP4 rellenan la ficha con lo que la etiqueta traiga. La portada se copia solo si la firma es JPEG, PNG, GIF, BMP o TIFF y no supera 8 MiB; un archivo de imagen ya existente no se sustituye. WebP no está en la API de lectura de esta versión y no se guarda. MKV y WebM no se leen: la importación sigue y la ficha queda con el título provisional. lofty no publica un tope de tamaño de etiqueta; el descarte de 8 MiB se aplica cuando la imagen ya está en memoria. La escritura opcional no se elige aquí y sigue en DP-11.
 
 ### DP-11 Escritura opcional de etiquetas
 
@@ -393,7 +393,7 @@ Estados: confirmada, pendiente, prevista, descartada.
 - **Fecha:** 2026-11-04
 - **Estado:** pendiente
 - **Bloquea:** el detalle de F12.3 y F12.4
-- **Qué hay que elegir:** Si libmpv, FFmpeg y yt-dlp se incluyen en el instalador o se documentan como requisitos externos. La herramienta de etiquetas entra en la misma decisión cuando DP-10 la elija.
+- **Qué hay que elegir:** Si libmpv, FFmpeg y yt-dlp se incluyen en el instalador o se documentan como requisitos externos. lofty 0.25.5 ya va compilado dentro del binario de Rust y no es un ejecutable aparte.
 - **Consecuencias de dejarla abierta:** Las licencias se inventariarán cuando existan las dependencias. La guía de instalación no puede afirmar todavía si esas herramientas viajan dentro del paquete.
 - **Nota tras F1.5 (2026-11-06):** DC-17 elige libmpv dentro del proceso, pero la `libmpv-2.dll` usada en desarrollo no queda aprobada para distribuirse. Antes de incluir cualquier DLL en el instalador hay que verificar su procedencia y su compilación, las obligaciones de la LGPL (avisos, textos de licencia, código fuente o instrucciones para obtenerlo y posibilidad de sustituir la DLL) y las licencias de sus componentes. Los mantenedores de mpv recomiendan compilarla uno mismo para distribuirla. DP-20 sigue pendiente.
 

@@ -1,7 +1,7 @@
 # Media Center — Progreso
 
 Estado del documento: vivo. Se actualiza al cerrar trabajo de planificación o de desarrollo.  
-Última actualización: 2026-11-09.
+Última actualización: 2026-11-11.
 
 ## Estado general
 
@@ -11,7 +11,7 @@ F1.4 está **hecha**: las dos integraciones experimentales de mpv (A, libmpv den
 
 F1.5 está **hecha**. Con las pruebas de viabilidad en A y en B, el usuario aprobó el 2026-11-06 la integración A, libmpv dentro del proceso: DP-01 queda cerrada en DC-17. B se descarta como solución principal y se conserva por ahora en el diagnóstico de desarrollo. El reproductor del producto no se ha empezado.
 
-No hay funcionalidad de producto. No existen biblioteca, importación, reproducción para la persona usuaria, descargas ni base de datos. No se han instalado SQLite, yt-dlp ni FFmpeg como herramientas. libmpv y mpv.exe solo están en una carpeta local ignorada por Git. El esquema de [DATABASE.md](DATABASE.md) está aprobado desde el 2026-11-09 (DC-18). Las rutas están decididas (DC-22). No se ha creado la base ni ninguna migración ni la carpeta multimedia.
+Hay importación de producto en la biblioteca de desarrollo. F3.1 elige archivos, F3.2 los copia o los mueve y crea la ficha, y F3.3 rellena las etiquetas de MP3, FLAC y M4A/MP4 y guarda la portada incrustada. La lista visual, la edición, la reproducción para la persona usuaria y las descargas no han empezado. No se han instalado yt-dlp ni FFmpeg como herramientas. libmpv y mpv.exe solo están en una carpeta local ignorada por Git. El esquema de [DATABASE.md](DATABASE.md) está aprobado desde el 2026-11-09 (DC-18) y la migración 1 crea la base al arrancar. Las rutas están decididas (DC-22).
 
 El [README.md](../README.md) describe el proyecto, en inglés, como planificación y desarrollo inicial.
 
@@ -423,7 +423,7 @@ Pruebas esenciales: las siete se ejecutaron en A y en B. Todas pasaron salvo la 
 | 0 | Cerrar la planificación | Hecha. F0.1, F0.2, F0.3 y F0.4 completadas. El esquema inicial está aprobado |
 | 1 | Esqueleto e integración inicial de libmpv | Hecha. F1.1 a F1.5 completadas; libmpv dentro del proceso elegido en DC-17 |
 | 2 | Persistencia | F2.1, F2.2 y F2.3 hechas el 2026-11-09 |
-| 3 | Importación | F3.1 y F3.2 hechas el 2026-11-09. Copiar y mover dejan el archivo en la carpeta administrada y crean la ficha principal. El movimiento usa copia y SHA-256, no un renombrado directo, porque el diario no guarda la identidad del archivo ni la del volumen y la migración 1 no se ha cambiado. Una fila `rename` queda en revisión y no borra nada. Las subcarpetas no se importan: esa decisión sigue pendiente. La segunda ficha es F3.5. No empieza F3.3 |
+| 3 | Importación | F3.1, F3.2 y F3.3 hechas. Copiar y mover dejan el archivo en la carpeta administrada y crean la ficha principal. El movimiento usa copia y SHA-256, no un renombrado directo, porque el diario no guarda la identidad del archivo ni la del volumen y la migración 1 no se ha cambiado. Una fila `rename` queda en revisión y no borra nada. F3.3 lee con lofty 0.25.5, sin reescribir el multimedia: MP3, FLAC y M4A/MP4 rellenan la ficha y guardan la portada si es JPEG, PNG, GIF, BMP o TIFF de hasta 8 MiB. WebP no se guarda. MKV y WebM se importan con el título provisional. Las subcarpetas no se importan: esa decisión sigue pendiente. La segunda ficha es F3.5. No empieza F3.4 ni F4.1 |
 | 4 | Consulta de la biblioteca | No iniciada |
 | 5 | Edición de metadatos e imágenes | No iniciada |
 | 6 | Playlists | No iniciada. Colecciones y categorías bloqueadas |
@@ -440,7 +440,6 @@ El detalle de cada tarea está en [ROADMAP.md](ROADMAP.md). Ninguna tarea está 
 
 | Decisión | Antes de |
 | --- | --- |
-| [DP-10](DECISIONS.md) Herramienta de etiquetas | Extraer portadas y rellenar fichas al importar |
 | [DP-05](DECISIONS.md) Identidad de un archivo renombrado | Reconciliar rutas automáticamente. Las columnas ya están en el esquema |
 | [DP-06](DECISIONS.md) Duplicados de descarga | Elegir la señal del duplicado. Avisar y no descartar en silencio ya está fijado |
 | [DP-07](DECISIONS.md) Vídeo asociado más corto | Elegir bucle, último fotograma o preferencia de la ficha |
@@ -454,11 +453,11 @@ El detalle de cada tarea está en [ROADMAP.md](ROADMAP.md). Ninguna tarea está 
 | [DP-19](DECISIONS.md) Formato del instalador | Generar el paquete de Windows |
 | [DP-20](DECISIONS.md) Empaquetado de herramientas externas | Decidir si viajan dentro del instalador. La DLL de libmpv usada en desarrollo no está aprobada para distribuirse |
 
-Decisiones ya cerradas: extracción de portadas (DC-12), datos propios de cada ficha (DC-13), copia y movimiento seguros (DC-14), momento de la integración de libmpv (DC-15), evolución de categorías y colecciones por tablas nuevas (DC-16), integración de libmpv dentro del proceso (DC-17, que cierra DP-01), esquema inicial (DC-18, que cierra DP-17), referencias externas (DC-19, que cierra DP-04; la función llega en F9.3), presentación visual automática (DC-20, que cierra DP-08), varias fichas para un mismo archivo (DC-21, que cierra DP-18; la función llega en F3.5) y rutas de almacenamiento (DC-22, que cierra DP-09).
+Decisiones ya cerradas: extracción de portadas (DC-12), datos propios de cada ficha (DC-13), copia y movimiento seguros (DC-14), momento de la integración de libmpv (DC-15), evolución de categorías y colecciones por tablas nuevas (DC-16), integración de libmpv dentro del proceso (DC-17, que cierra DP-01), esquema inicial (DC-18, que cierra DP-17), referencias externas (DC-19, que cierra DP-04; la función llega en F9.3), presentación visual automática (DC-20, que cierra DP-08), varias fichas para un mismo archivo (DC-21, que cierra DP-18; la función llega en F3.5), rutas de almacenamiento (DC-22, que cierra DP-09) y lectura de etiquetas (DP-10, cerrada el 2026-11-11 con lofty 0.25.5; la escritura sigue en DP-11).
 
 ## Siguiente paso
 
-La fase 0, la fase 1 y la fase 2 están cerradas. F3.1 elige archivos o una carpeta y la biblioteca de destino. F3.2 copia o mueve esa selección, registra la ficha y no lee etiquetas ni portadas. El trabajo se detiene antes de F3.3. La lista de la biblioteca sigue en F4.1.
+La fase 0, la fase 1 y la fase 2 están cerradas. F3.1 elige archivos o una carpeta y la biblioteca de destino. F3.2 copia o mueve esa selección y registra la ficha. F3.3 rellena las etiquetas que el archivo ya trae y guarda la portada incrustada cuando el formato se puede leer. El trabajo se detiene antes de F3.4 y de F4.1. La lista de la biblioteca sigue en F4.1. La escritura de etiquetas sigue en DP-11.
 
 ## Historial
 
@@ -481,3 +480,4 @@ La fase 0, la fase 1 y la fase 2 están cerradas. F3.1 elige archivos o una carp
 | 2026-11-09 | F3.1 hecha. Importar, en las tres bibliotecas, abre el diálogo nativo para varios archivos o una carpeta. La biblioteca de destino es explícita y la selección queda en memoria. Cancelar no la borra si ya había una válida. No se copian archivos, no se crean fichas y no empieza F3.2. |
 | 2026-11-09 | F3.2 hecha. Copiar conserva el original y mover lo retira solo después de SHA-256, con el mismo manejador abierto. No se usa el renombrado directo porque el diario no guarda la identidad del archivo ni la del volumen; la migración 1 no se modifica. Un destino ocupado no se sobrescribe. Las subcarpetas quedan pendientes de decidir y la interfaz lo dice. No empieza F3.3. |
 | 2026-11-09 | Comprobación manual de F3.2 con `clip.mp4` desechable. Copiar dejó el original, publicó la copia en la carpeta de desarrollo y creó una ficha en su `library.db`. La biblioteca de producción no se tocó. Al terminar, la carpeta pasa a mostrarse como confirmada. |
+| 2026-11-11 | F3.3 hecha. La lectura usa lofty 0.25.5 y no reescribe el archivo. MP3, FLAC y M4A/MP4 rellenan título, artista, álbum, género, año, descripción y duración, y guardan la portada si es JPEG, PNG, GIF, BMP o TIFF de hasta 8 MiB. WebP no se guarda. MKV y WebM se importan con el título provisional. Un fallo de etiquetas no cambia el borrado del original. La comprobación manual, en la biblioteca de desarrollo, copió cinco archivos desechables: las tres piezas de audio quedaron como «Cancion» con portada JPEG, y el MKV y el WebM como «clip» sin imagen. Los originales conservaron tamaño y fecha. La biblioteca de producción no se tocó. No empieza F3.4 ni F4.1. |

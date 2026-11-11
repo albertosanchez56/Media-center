@@ -1,11 +1,11 @@
 # Media Center — Visión del proyecto
 
 Estado del documento: planificación inicial, con el esquema de datos aprobado.  
-Última actualización: 2026-11-09.
+Última actualización: 2026-11-11.
 
 Este documento describe qué es Media Center, a quién se dirige la primera versión y qué queda fuera de ella. Los requisitos detallados están en [REQUIREMENTS.md](REQUIREMENTS.md). Las decisiones cerradas y las que siguen abiertas están en [DECISIONS.md](DECISIONS.md).
 
-El esquema de SQLite descrito en [DATABASE.md](DATABASE.md) está aprobado (DC-18). La migración 1 crea la base al arrancar. El volumen se guarda en `app_settings`. F3.1 elige archivos o una carpeta y la biblioteca de destino. F3.2 copia o mueve esa selección a la carpeta administrada y crea la ficha principal, sin leer etiquetas ni portadas. La lista de la biblioteca, la segunda ficha y el resto de las fases posteriores no han empezado.
+El esquema de SQLite descrito en [DATABASE.md](DATABASE.md) está aprobado (DC-18). La migración 1 crea la base al arrancar. El volumen se guarda en `app_settings`. F3.1 elige archivos o una carpeta y la biblioteca de destino. F3.2 copia o mueve esa selección a la carpeta administrada y crea la ficha principal. F3.3 rellena título, artista, álbum, género, año, descripción y duración cuando el archivo los trae en un formato que lofty 0.25.5 puede leer, y guarda la portada incrustada en la carpeta de imágenes. La lista de la biblioteca, la segunda ficha y el resto de las fases posteriores no han empezado.
 
 ## Qué es
 
@@ -74,7 +74,7 @@ Una aplicación móvil con streaming necesitaría un punto de conexión en el or
 | SQLite | Biblioteca y metadatos | Elegida. El esquema inicial está aprobado (DC-18) y la migración 1 lo crea al arrancar |
 | libmpv | Motor multimedia | Elegido e integrado dentro del proceso de la aplicación (DC-17, F1.5). Falta decidir cómo viaja en el instalador |
 | yt-dlp y FFmpeg | Descargas autorizadas | Elegidos como herramientas. Falta decidir si viajan dentro del instalador |
-| Lector y editor de etiquetas | Leer metadatos y portadas y, de forma opcional, escribir etiquetas | La extracción de portadas está confirmada. La herramienta concreta sigue pendiente |
+| Lector y editor de etiquetas | Leer metadatos y portadas y, de forma opcional, escribir etiquetas | La lectura usa lofty 0.25.5 (DP-10). La escritura opcional sigue pendiente en DP-11 |
 
 La primera versión no usa Spring Boot ni otro servidor de aplicación.
 

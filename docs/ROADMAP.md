@@ -1,13 +1,13 @@
 # Media Center — Hoja de ruta
 
 Estado del documento: planificación inicial. El desarrollo ha empezado con la fase 1 y el esquema de datos está aprobado.  
-Última actualización: 2026-11-09.
+Última actualización: 2026-11-11.
 
 Cada tarea es un incremento pequeño. No se inicia una tarea hasta cerrar las decisiones de las que depende. El seguimiento vivo está en [PROGRESS.md](PROGRESS.md).
 
 Leyenda de estados: pendiente, bloqueada, en curso, hecha.
 
-Las tareas hechas de la fase 0 son documentación. F1.1 dejó una aplicación de escritorio vacía. F1.2 añadió un comando de prueba de Rust invocado desde la interfaz. F1.3 colocó el armazón visual de cuatro zonas sin datos reales. F1.4 y F1.5 estudiaron la integración de libmpv en el diagnóstico de desarrollo y eligieron libmpv dentro del proceso (DC-17). F3.1 permite elegir archivos o una carpeta y la biblioteca de destino. F3.2 los copia o los mueve a la carpeta administrada y crea la ficha principal, sin leer etiquetas ni mostrar todavía la lista. No hay reproducción ni descargas para la persona usuaria.
+Las tareas hechas de la fase 0 son documentación. F1.1 dejó una aplicación de escritorio vacía. F1.2 añadió un comando de prueba de Rust invocado desde la interfaz. F1.3 colocó el armazón visual de cuatro zonas sin datos reales. F1.4 y F1.5 estudiaron la integración de libmpv en el diagnóstico de desarrollo y eligieron libmpv dentro del proceso (DC-17). F3.1 permite elegir archivos o una carpeta y la biblioteca de destino. F3.2 los copia o los mueve a la carpeta administrada y crea la ficha principal. F3.3 rellena esa ficha con las etiquetas que el archivo ya trae y guarda la portada incrustada cuando el formato se puede leer. La lista de la biblioteca todavía no se muestra. No hay reproducción ni descargas para la persona usuaria.
 
 ## Fase 0 — Cerrar la planificación
 
@@ -178,16 +178,16 @@ Objetivo: incorporar archivos a la biblioteca elegida y crear su ficha, con el p
 
 ### F3.3 Leer metadatos y portada incrustada
 
-- **Estado:** bloqueada
-- **Depende de:** F3.2 y de la herramienta de lectura de etiquetas
-- **Descripción:** Rellenar la ficha con lo que el archivo ya contenga y extraer la portada incrustada a la carpeta de imágenes.
+- **Estado:** hecha el 2026-11-11
+- **Depende de:** F3.2. La lectura quedó cerrada en DP-10 con lofty 0.25.5
+- **Descripción:** Rellenar la ficha con lo que el archivo ya contenga y extraer la portada incrustada a la carpeta de imágenes. La lectura no reescribe el multimedia.
 - **Criterios de aceptación:**
   - Un archivo con título, artista y portada muestra esos datos en la ficha nueva.
   - La portada extraída queda referenciada desde la ficha y el archivo multimedia conserva tamaño y fecha de modificación.
   - Un archivo sin metadatos crea igualmente la ficha, con el nombre de archivo como título provisional.
   - La imagen personalizada, cuando exista más adelante, no ocupa el sitio del archivo de la portada extraída.
 
-Elegir la herramienta de etiquetas es una decisión previa a esta tarea. Puede hacerse durante la fase 3, antes de implementarla. DC-12 ya fija el comportamiento.
+MP3, FLAC y M4A/MP4 se leen. Si la etiqueta trae título, artista, álbum, género, año, descripción o duración, esos valores entran en la ficha. La portada se guarda solo si su contenido es JPEG, PNG, GIF, BMP o TIFF y no supera 8 MiB. WebP no está en la API de lectura de lofty 0.25.5 y no se guarda. MKV y WebM siguen importándose con el título provisional y sin portada. Un fallo de lectura deja la ficha provisional de F3.2 y no cambia el borrado del original. Los campos que la persona haya editado no se sustituyen. La lista visual sigue en F4.1.
 
 ### F3.4 Importar un MP4 a cualquiera de las tres bibliotecas
 
@@ -632,7 +632,7 @@ Podrán entrar en una hoja de ruta posterior cuando se decida abordarlas.
 
 1. La documentación de planificación queda en F0.1, F0.2, F0.3 y F0.4. El esquema inicial está aprobado y la migración 1 ya está creada.
 2. La fase 1 está hecha: ventana, puente, armazón e integración de libmpv dentro del proceso (DC-17).
-3. F2.1, F2.2, F2.3, F3.1 y F3.2 están hechas. La ficha usa el nombre del archivo. Los metadatos y la portada siguen en F3.3. La lista de la biblioteca sigue en F4.1.
+3. F2.1, F2.2, F2.3, F3.1, F3.2 y F3.3 están hechas. La ficha de un MP3, FLAC o M4A/MP4 usa las etiquetas leídas y, si hay portada admitida, la guarda aparte. MKV y WebM quedan con el título provisional. La lista de la biblioteca sigue en F4.1. La escritura de etiquetas sigue en DP-11.
 4. Importar, consultar, editar y crear playlists (fases 3 a 6).
 5. Completar la reproducción y el vídeo asociado (fases 7 y 8) con la integración ya elegida.
 6. Añadir la reconciliación de archivos y las descargas por lotes (fases 9 y 10).
